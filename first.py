@@ -76,18 +76,29 @@ def draw_sphere(scree, s, n):
         pygame.display.flip()
 
 
+def draw_blocks(scree, s):
+    scree.fill(pygame.Color("white"))
+    color = pygame.Color("red")
+    for row in range(0, 200, 17):
+        start = 0
+        if row // 17 % 2 != 0:
+            start = -16
+        for col in range(start, 300, 32):
+            pygame.draw.rect(scree, color, (col, row, 30, 15), width=0)
+
+
 if __name__ == '__main__':
     pygame.init()
-    intput = input().split()
-    while ger_size(intput) is None:
-        print("Неправильный формат ввода")
-        intput = input().split()
-    num = ger_size(intput)[0]
-    size = width, height = 300, 300
+    # intput = input().split()
+    # while ger_size(intput) is None:
+    #     print("Неправильный формат ввода")
+    #     intput = input().split()
+    # num = ger_size(intput)[0]
+    size = width, height = 300, 200
     screen = pygame.display.set_mode(size)
-    pygame.display.set_caption("мячик")
+    pygame.display.set_caption("кирпичи")
 
-    draw_sphere(screen, size, num)
+    draw_blocks(screen, size)
     pygame.display.flip()
     while pygame.event.wait().type != pygame.QUIT:
         pygame.display.flip()
