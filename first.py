@@ -3,7 +3,7 @@ import pygame
 
 def ger_size(it):
     try:
-        if len(it) != 2:
+        if len(it) != 1:
             raise Exception
         s = list(map(int, it))
         # if s[0] % s[1] != 0:
@@ -63,18 +63,31 @@ def draw_mish(scree, s, w, n):
             color = pygame.Color("red")
 
 
+def draw_sphere(scree, s, n):
+    scree.fill((0, 0, 0))
+    color = pygame.Color("white")
+    for i in range(0, n):
+        # pygame.draw.ellipse
+        pygame.draw.ellipse(scree, color, (0, (i * (150 // n)), 300, 300 - i * (300 // n)), width=1)
+        pygame.display.flip()
+    for i in range(0, n):
+        # pygame.draw.ellipse
+        pygame.draw.ellipse(scree, color, (i * (150 // n), 0, 300 - i * (300 // n), 300), width=1)
+        pygame.display.flip()
+
+
 if __name__ == '__main__':
     pygame.init()
     intput = input().split()
     while ger_size(intput) is None:
         print("Неправильный формат ввода")
         intput = input().split()
-    w_len, num = ger_size(intput)
-    size = width, height = w_len * num * 2, w_len * num * 2
+    num = ger_size(intput)[0]
+    size = width, height = 300, 300
     screen = pygame.display.set_mode(size)
-    pygame.display.set_caption("миша")
+    pygame.display.set_caption("мячик")
 
-    draw_mish(screen, size, w_len, num)
+    draw_sphere(screen, size, num)
     pygame.display.flip()
     while pygame.event.wait().type != pygame.QUIT:
         pygame.display.flip()
