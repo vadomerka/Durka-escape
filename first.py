@@ -6,8 +6,8 @@ def ger_size(it):
         if len(it) != 2:
             raise Exception
         s = list(map(int, it))
-        if s[0] % s[1] != 0:
-            raise Exception
+        # if s[0] % s[1] != 0:
+        #     raise Exception
         return s
     except Exception:
         return None
@@ -47,19 +47,34 @@ def draw_red(scree, w, h):
     pygame.draw.rect(scree, (255, 0, 0), (1, 1, w - 2, h - 2), width=0)
 
 
+def draw_mish(scree, s, w, n):
+    scree.fill((0, 0, 0))
+    color = pygame.Color("red")
+    center = s[0] // 2, s[0] // 2
+    for i in range(1, n + 1):
+        rad = i * w
+        pygame.draw.circle(scree, color, center, rad, width=w)
+        # pygame.display.flip()
+        if i % 3 == 1:
+            color = pygame.Color("green")
+        elif i % 3 == 2:
+            color = pygame.Color("blue")
+        else:
+            color = pygame.Color("red")
+
+
 if __name__ == '__main__':
     pygame.init()
     intput = input().split()
     while ger_size(intput) is None:
         print("Неправильный формат ввода")
         intput = input().split()
-    intput = ger_size(intput)
-    size = width, height = intput[0], intput[0]
-    cell = intput[1]
+    w_len, num = ger_size(intput)
+    size = width, height = w_len * num * 2, w_len * num * 2
     screen = pygame.display.set_mode(size)
-    pygame.display.set_caption("Сруыы")
+    pygame.display.set_caption("миша")
 
-    draw_chess(screen, size, cell)
+    draw_mish(screen, size, w_len, num)
     pygame.display.flip()
     while pygame.event.wait().type != pygame.QUIT:
         pygame.display.flip()
