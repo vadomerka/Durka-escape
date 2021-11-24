@@ -37,6 +37,11 @@ def draw_tic(screen, w, h):
     pygame.draw.line(screen, color, (0, h), (w, 0), width=10)
 
 
+def draw_red(scree, w, h):
+    screen.fill((0, 0, 0))
+    pygame.draw.rect(scree, (255, 0, 0), (1, 1, w - 2, h - 2), width=0)
+
+
 if __name__ == '__main__':
     pygame.init()
     intput = input().split()
@@ -47,9 +52,10 @@ if __name__ == '__main__':
     size = width, height = ger_size(intput)
     # cell = intput[1]
     screen = pygame.display.set_mode(size)
-    pygame.display.set_caption("Крест")
+    pygame.display.set_caption("Rect")
 
-    draw_tic(screen, width, height)
+    draw_red(screen, width, height)
+    pygame.display.flip()
     while pygame.event.wait().type != pygame.QUIT:
         pygame.display.flip()
         pass
