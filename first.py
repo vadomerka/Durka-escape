@@ -3,11 +3,11 @@ import pygame
 
 def ger_size(it):
     try:
-        if len(it) != 1:
+        if len(it) != 2:
             raise Exception
         s = list(map(int, it))
-        # if s[0] % s[1] != 0:
-        #     raise Exception
+        if s[0] % 4 != 0 or not (0 <= s[1] <= 360) or not (0 <= s[0] <= 100):
+            raise Exception
         return s
     except Exception:
         return None
@@ -32,7 +32,7 @@ def draw_chess(screen, s, c):
                 color = pygame.Color("white")
             else:
                 color = pygame.Color("black")
-    # pygame.draw.rect(screen, pygame.Color("black"), left_down, width=0)
+    # pygame.draw.rect(screen, pygame.Color("black"), left_down, width=0) \
 
 
 def draw_tic(screen, w, h):
@@ -87,18 +87,34 @@ def draw_blocks(scree, s):
             pygame.draw.rect(scree, color, (col, row, 30, 15), width=0)
 
 
+def draw_block(scree, a, colour):
+    scree.fill(pygame.Color("black"))
+    color = pygame.Color("red")
+    hsv = color.hsva
+    color.hsva = (colour, hsv[1], 75, hsv[3])
+    pygame.draw.rect(scree, color, (100, 175, a, a), width=0)
+    color.hsva = (colour, hsv[1], 100, hsv[3])
+    pygame.draw.polygon(scree, color,
+                        [[100, 175], [100 + a // 2, 175 - a // 2],
+                         [100 + a + a // 2, 175 - a // 2], [100 + a, 175]])
+    color.hsva = (colour, hsv[1], 50, hsv[3])
+    pygame.draw.polygon(scree, color,
+                        [[100 + a, 175], [100 + a + a // 2, 175 - a // 2],
+                         [100 + a + a // 2, 175 + a // 2], [100 + a, 175 + a]])
+
+
 if __name__ == '__main__':
     pygame.init()
-    # intput = input().split()
-    # while ger_size(intput) is None:
-    #     print("Неправильный формат ввода")
-    #     intput = input().split()
-    # num = ger_size(intput)[0]
-    size = width, height = 300, 200
+    intput = input().split()
+    while ger_size(intput) is None:
+        print("Неправильный формат ввода")
+        intput = input().split()
+    intput = ger_size(intput)
+    size = width, height = 300, 300
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption("кирпичи")
 
-    draw_blocks(screen, size)
+    draw_block(screen, intput[0], intput[1])
     pygame.display.flip()
     while pygame.event.wait().type != pygame.QUIT:
         pygame.display.flip()
