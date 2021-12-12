@@ -1,5 +1,6 @@
 import pygame
 from copy import deepcopy
+import random
 
 
 class Board:
@@ -55,72 +56,52 @@ class Board:
         raw_cords = [(col - 1, row - 1), (col, row - 1), (col + 1, row - 1),
                      (col - 1, row), (col + 1, row),
                      (col - 1, row + 1), (col, row + 1), (col + 1, row + 1)]
-        cords = list(map(lambda x: self.board[x[1]][x[0]], filter(lambda x: self.checked(x), raw_cords)))
+        cords = list(map(lambda x: int(self.board[x[1]][x[0]] == 10), filter(lambda x: self.checked(x), raw_cords)))
         return sum(cords)
 
 
-class Life(Board):
+class GrandSapper(Board):
     def __init__(self, width, height, left=15, top=15, cell_color=(255, 255, 255)):
         super().__init__(width, height, left=left, top=top, cell_color=cell_color)
+        self.board = [[''] * width for _ in range(height)]
+        bomb_count = int(0.15625 * self.width * self.height)
+        for i in range(bomb_count):
+            rand_x = random.randint(0, self.width - 1)
+            rand_y = random.randint(0, self.height - 1)
+            while self.board[rand_y][rand_x] == 10:
+                rand_x = random.randint(0, self.width - 1)
+                rand_y = random.randint(0, self.height - 1)
+            self.board[rand_y][rand_x] = 10
 
     def render(self, sc):
         for row in range(self.height):
             for col in range(self.width):
                 left, top = self.left + col * self.cell_size, self.top + row * self.cell_size
-                if self.board[row][col]:
-                    w = 0
+                pygame.draw.rect(sc, self.color, (left, top, self.cell_size, self.cell_size), width=1)
+                if self.board[row][col] == '':
+                    continue
+                elif self.board[row][col] == 10:
+                    pygame.draw.rect(sc, pygame.Color("red"), (left, top, self.cell_size, self.cell_size), width=0)
                 else:
-                    w = 1
-                pygame.draw.rect(sc, self.color, (left, top, self.cell_size, self.cell_size), width=w)
-                if self.board[row][col]:
-                    pygame.draw.rect(sc, pygame.Color("white"), (left, top, self.cell_size, self.cell_size), width=0)
-                # elif self.neighbours(col, row) == 1:
-                #     pygame.draw.rect(sc, pygame.Color("green"), (left, top, self.cell_size, self.cell_size), width=0)
-                # elif self.neighbours(col, row) == 2:
-                #     pygame.draw.rect(sc, pygame.Color("blue"), (left, top, self.cell_size, self.cell_size), width=0)
-                # elif self.neighbours(col, row) == 3:
-                #     pygame.draw.rect(sc, pygame.Color("red"), (left, top, self.cell_size, self.cell_size), width=0)
+                    font = pygame.font.Font(None, self.cell_size)
+                    text = font.render(str(self.board[row][col]), True, (0, 255, 0))
+                    screen.blit(text, (left, top))
 
     def on_click(self, c_cords):
-        self.board[c_cords[0]][c_cords[1]] = 0 if self.board[c_cords[0]][c_cords[1]] else 1
-
-    def next_move(self):
-        new_board = deepcopy(self.board)
-        for row in range(self.height):
-            for col in range(self.width):
-                n = self.neighbours(col, row)
-                if self.board[row][col] == 1:
-                    if n < 2 or n > 3:
-                        new_board[row][col] = 0
-                    else:
-                        new_board[row][col] = 1
-                else:
-                    if n == 3:
-                        new_board[row][col] = 1
-        self.board = deepcopy(new_board)
-
-    def checked(self, c):
-        return 0 <= c[0] < self.width and 0 <= c[1] < self.height
-
-    def neighbours(self, col, row):
-        raw_cords = [(col - 1, row - 1), (col, row - 1), (col + 1, row - 1),
-                     (col - 1, row), (col + 1, row),
-                     (col - 1, row + 1), (col, row + 1), (col + 1, row + 1)]
-        cords = list(map(lambda x: self.board[x[1]][x[0]], filter(lambda x: self.checked(x), raw_cords)))
-        return sum(cords)
+        if self.board[c_cords[0]][c_cords[1]] != 10:
+            self.board[c_cords[0]][c_cords[1]] = self.neighbours(c_cords[1], c_cords[0])
 
 
 if __name__ == '__main__':
     pygame.init()
-    size = width, height = 1000, 1000
+    size = width, height = 500, 250
     screen = pygame.display.set_mode(size)
     screen.fill(pygame.Color("black"))
     clock = pygame.time.Clock()
     fps = 60
-    board = Life(50, 50)
-    board.set_view(0, 0, 20)
+    board = GrandSapper(25, 15)
+    board.set_view(0, 0, 25)
     running = True
-    evolving = False
     while running:
         screen.fill((0, 0, 0))
         for event in pygame.event.get():
@@ -128,17 +109,6 @@ if __name__ == '__main__':
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 board.get_click(event.pos)
-            if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 3) or \
-                    (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE):
-                evolving = not evolving
-            if event.type == pygame.MOUSEWHEEL:
-                fps += event.y
-                if fps <= 0:
-                    fps = 1
-                if fps > 60:
-                    fps = 60
-        if evolving:
-            board.next_move()
         screen.fill((0, 0, 0))
         board.render(screen)
         clock.tick(fps)
