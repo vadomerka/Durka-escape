@@ -9,6 +9,14 @@ size = width, height = 1000, 1000
 player_h = cell_h * 2
 player_w = cell_w
 gravity = 0.16
+pygame.init()
+screen = pygame.display.set_mode(size)
+screen.fill(pygame.Color("black"))
+clock = pygame.time.Clock()
+fps = 60
+all_sprites = pygame.sprite.Group()
+cells_group = pygame.sprite.Group()
+player_group = pygame.sprite.Group()
 
 
 def load_image(name, colorkey=None):
@@ -28,6 +36,12 @@ def load_image(name, colorkey=None):
     return image
 
 
+cell_images = {
+    'wall': load_image('mood.jpg'),
+    'empty': load_image('pasha.jpg')
+}
+
+
 def load_level(filename):
     filename = "data/" + filename
     # читаем уровень, убирая символы перевода строки
@@ -38,14 +52,17 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-class Level:
-    pass
-
+class Cell(pygame.sprite.Sprite):
+    def __init__(self, cell_type, pos_x, pos_y):
+        super().__init__(cells_group, all_sprites)
+        self.image = pygame.transform.scale(cell_images[cell_type], (cell_w, cell_h))
+        self.rect = self.image.get_rect().move(
+            cell_w * pos_x, cell_h * pos_y)
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, img):
-        super().__init__(all_sprites)
+        super().__init__(player_group, all_sprites)
         self.image = pygame.transform.scale(load_image(img), (player_w, player_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
@@ -93,16 +110,26 @@ class Player(pygame.sprite.Sprite):
             self.rect.y = 0
 
 
+def generate_level(level):  # левел будет построен как в учебнике: cell'ы и враги загружаются из текстового файла
+    new_player, x, y = None, None, None
+    players = []
+    for y in range(len(level)):
+        for x in range(len(level[y])):
+            if level[y][x] == '.':
+                Cell('empty', x, y)
+            elif level[y][x] == '#':
+                Cell('wall', x, y)
+            elif level[y][x] == '@':
+                Cell('empty', x, y)
+                players.append((x, y))
+    for x, y in players:
+        new_player = Player(x, y, "sad_cat.jpg")
+    return new_player
+
+
 if __name__ == '__main__':
-    pygame.init()
-    screen = pygame.display.set_mode(size)
-    screen.fill(pygame.Color("black"))
-    clock = pygame.time.Clock()
-    fps = 60
-
-    all_sprites = pygame.sprite.Group()
-
-    player = Player(5, 5, "sad_cat.jpg")
+    # player = Player(5, 5, "sad_cat.jpg")
+    player = generate_level(load_level("level 1"))
 
     running = True
     while running:
