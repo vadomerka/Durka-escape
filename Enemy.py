@@ -90,33 +90,37 @@ class Gun(pygame.sprite.Sprite):
         self.count = 0
         self.pos = (pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
+        self.anim_on = False
 
     def update(self):
         self.count += 1
         if self.count == 10:
             self.image = pygame.transform.scale(load_image('spoon.png'), (player_w, player_h // 2))
+            self.anim_on = False
         if pygame.sprite.collide_mask(self, player):
             self.equipped = True
-        if self.equipped:
+        if self.equipped and not self.anim_on:
             self.rect.y = player.rect.y
-            self.rect.x = player.rect.x
-        self.speed_y += gravity
-        self.rect.x += self.speed_x
-        self.rect.y += self.speed_y
-        if self.rect.x >= (width - player_w):
-            self.speed_x = -self.speed_x
-        elif self.rect.x <= 0:
-            self.speed_x = -self.speed_x
-        if self.rect.y >= (height - player_h // 2):
-            self.rect.y = (height - player_h // 2)
-        elif self.rect.y <= 0:
-            self.rect.y = 0
+            self.rect.x = player.rect.x - 20
+        elif self.equipped and self.anim_on:
+            self.rect.x = player.rect.x - 30
+            self.rect.y = player.rect.y + 30
+        else:
+            self.speed_y += gravity
+            self.rect.x += self.speed_x
+            self.rect.y += self.speed_y
+            if self.rect.x >= (width - player_w):
+                self.speed_x = -self.speed_x
+            elif self.rect.x <= 0:
+                self.speed_x = -self.speed_x
+            if self.rect.y >= (height - player_h // 2):
+                self.rect.y = (height - player_h // 2)
+            elif self.rect.y <= 0:
+                self.rect.y = 0
 
     def shoot(self):
-        clock = pygame.time.Clock()
-        self.image = self.image = pygame.transform.scale(load_image('hit_spoon.png'), (player_w, player_h // 2))
-        self.rect.y = player.rect.y - 10
-        clock.tick(10000)
+        self.image = pygame.transform.scale(load_image('hit_spoon.png'), (player_w, player_h // 2))
+        self.anim_on = True
         self.count = 0
 
 
@@ -175,7 +179,7 @@ class Enemy(pygame.sprite.Sprite):
         if pygame.sprite.collide_mask(self, player):
             self.speed_x = 0
             #terminate()
-            #self.kill()
+            self.kill()
         self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
@@ -307,4 +311,5 @@ if __name__ == '__main__':
         all_sprites.update()
         clock.tick(fps)
         pygame.display.flip()
+
 
