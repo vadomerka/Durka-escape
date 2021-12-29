@@ -5,7 +5,7 @@ import pygame
 
 
 cell_h = cell_w = 50
-size = width, height = 1000, 1000
+size = width, height = 1000, 800
 player_h = cell_h * 2
 player_w = cell_w
 gravity = 0.16
@@ -49,8 +49,92 @@ class Level:
     pass
 
 
+class AnimatedSprite(pygame.sprite.Sprite):
+    def __init__(self, sheet, columns, rows, x, y):
+        super().__init__(all_sprites)
+        self.frames = []
+        self.cut_sheet(sheet, columns, rows)
+        self.cur_frame = 0
+        self.image = self.frames[self.cur_frame]
+        self.rect = self.rect.move(x, y)
+        self.count = 0
+        self.pos = (500, 500)
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+
+    def update(self):
+        #self.pos =
+        #self.rect.x, self.rect.y = player.rect.x, player.rect.y
+        if self.count % 5 == 0:
+            self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+            self.image = self.frames[self.cur_frame]
+        self.count += 1
+
+
+class Gun(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, img):
+        super().__init__(all_sprites)
+        self.image = pygame.transform.scale(img, (player_w, player_h // 2))
+        self.rect = self.image.get_rect().move(
+            cell_w * pos_x, cell_h * pos_y)
+        self.equipped = False
+        self.speed_x = 0
+        self.speed_y = 0
+        self.count = 0
+        self.pos = (pos_x, pos_y)
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def update(self):
+        self.count += 1
+        if self.count == 10:
+            self.image = pygame.transform.scale(load_image('spoon.png'), (player_w, player_h // 2))
+        if pygame.sprite.collide_mask(self, player):
+            self.equipped = True
+        if self.equipped:
+            self.rect.y = player.rect.y
+            self.rect.x = player.rect.x
+        self.speed_y += gravity
+        self.rect.x += self.speed_x
+        self.rect.y += self.speed_y
+        if self.rect.x >= (width - player_w):
+            self.speed_x = -self.speed_x
+        elif self.rect.x <= 0:
+            self.speed_x = -self.speed_x
+        if self.rect.y >= (height - player_h // 2):
+            self.rect.y = (height - player_h // 2)
+        elif self.rect.y <= 0:
+            self.rect.y = 0
+
+    def shoot(self):
+        clock = pygame.time.Clock()
+        self.image = self.image = pygame.transform.scale(load_image('hit_spoon.png'), (player_w, player_h // 2))
+        self.rect.y = player.rect.y - 10
+        clock.tick(10000)
+        self.count = 0
+
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, img):
+        super().__init__(all_sprites)
+        pass
+        #self.image = pygame.transform.scale(img, (player_w, player_h))
+        #self.rect = self.image.get_rect().move(
+        #    cell_w * pos_x, cell_h * pos_y)
+        #self.speed_x = 0
+        #self.speed_y = 0
+        #self.pos = (pos_x, pos_y)
+        #self.mask = pygame.mask.from_surface(self.image)
+
+
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, img, all_sprites):
+    def __init__(self, pos_x, pos_y, img):
         super().__init__(all_sprites)
         self.image = pygame.transform.scale(img, (player_w, player_h))
         self.rect = self.image.get_rect().move(
@@ -90,7 +174,8 @@ class Enemy(pygame.sprite.Sprite):
     def update(self):
         if pygame.sprite.collide_mask(self, player):
             self.speed_x = 0
-            terminate()
+            #terminate()
+            #self.kill()
         self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
@@ -159,9 +244,9 @@ class Player(pygame.sprite.Sprite):
             self.rect.y = 0
 
     def flip(self):
-        if self.direction == 1:
+        if self.direction == 0 or 1:
             self.image = pygame.transform.flip(self.image, flip_y=False, flip_x=True)
-            self.direction = 0
+            self.direction = 2
 
 
 if __name__ == '__main__':
@@ -170,12 +255,19 @@ if __name__ == '__main__':
     screen.fill(pygame.Color("black"))
     clock = pygame.time.Clock()
     fps = 60
-    img = load_image('mar.png')
-    img1 = load_image('box.png')
+    player_img = load_image('mar.png')
+    enemy_img = load_image('box.png')
+    gun_img = load_image('spoon.png')
+    bul_img = load_image('hit.png')
     all_sprites = pygame.sprite.Group()
 
-    player = Player(5, 5, img, all_sprites)
-    enemy = Enemy(7, 7, img1, all_sprites)
+
+    player = Player(5, 5, player_img, all_sprites)
+    dragon = AnimatedSprite(load_image("dragon_sheet8x2.png"), 8, 2, 50, 50)
+    gun = Gun(7, 8, gun_img)
+    enemy = Enemy(7, 7, enemy_img)
+    #bullet = Bullet(bul_img)
+
     running = True
     while running:
         screen.fill((0, 0, 0))
@@ -184,25 +276,35 @@ if __name__ == '__main__':
             player.movement("y", "up")
         if keys[pygame.K_LEFT]:
             player.movement("x", "left")
+            #player.direction = 1
+            #player.flip()
         if keys[pygame.K_RIGHT]:
+            #player.flip()
+            #player.direction = 0
             player.movement("x", "right")
         if keys[pygame.K_DOWN]:
             player.movement("y", "down")
+        if keys[pygame.K_SPACE]:
+            #print(1)
+            pass
         if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):  # если юзер не двигается по х, тогда стоп
             player.movement("x", "stop")
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN:
                 pass
-            elif event.type == pygame.K_RIGHT:
-                player.flip()
+            elif event.type == pygame.KEYUP and last_event[pygame.K_SPACE]:
+                gun.shoot()
+            elif event.type == pygame.K_SPACE:
+                print(1)
             if random.random() > 0.5:
                 enemy.movement("x", "right")
             else:
                 enemy.movement("x", "left")
+        last_event = keys
         all_sprites.draw(screen)
         all_sprites.update()
         clock.tick(fps)
         pygame.display.flip()
+
