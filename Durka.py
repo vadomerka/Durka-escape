@@ -164,9 +164,10 @@ class Creature(pygame.sprite.Sprite):
             pass
 
     def update(self):
+        if self.health <= 0:
+            self.kill()
         if self.move_down:
             self.speed_y += gravity
-
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
         self.collide_walls(width, 0, 0, height)
@@ -205,11 +206,9 @@ class Enemy(Creature):
 
     def update(self):
         super().update()
-        if self.health <= 0:
-            self.kill()
         if pygame.sprite.collide_mask(self, self.player):
             self.speed_x = 0
-            self.health -= 0.5
+            self.player.health -= 0.5
 
 
 class Player(Creature):
