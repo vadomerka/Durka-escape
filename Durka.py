@@ -51,25 +51,12 @@ class Cell(pygame.sprite.Sprite):
             cell_w * pos_x, cell_h * pos_y)
 
 
-class Wall(Cell):
+class Wall(pygame.sprite.Sprite):
     def __init__(self, cell_image, pos_x, pos_y):
-        super().__init__(cell_image, pos_x, pos_y)
-
-    def update(self):
-        for wall in walls_group:
-            if pygame.sprite.collide_rect(self, wall):
-                if 0 >= ((self.rect.x + self.rect.width) - wall.rect.x) >= -5:
-                    self.rect.x = wall.rect.x - self.rect.width
-                    print(1)
-                if 5 >= (self.rect.x - (wall.rect.x + wall.rect.width)) >= 0:
-                    self.rect.x = wall.rect.x + wall.rect.width
-                    print(2)
-                if 5 >= ((self.rect.y + self.rect.height) - wall.rect.y) >= 0:
-                    self.rect.y = wall.rect.y - self.rect.height
-                    print(3)
-                if 0 >= (self.rect.y - (wall.rect.y + wall.rect.height)) >= -5:
-                    self.rect.y = wall.rect.y + wall.rect.height
-                    print(4)
+        super().__init__(cells_group, all_sprites, walls_group)
+        self.image = pygame.transform.scale(cell_image, (cell_w, cell_h))
+        self.rect = self.image.get_rect().move(
+            cell_w * pos_x, cell_h * pos_y)
 
 
 class Weapon(pygame.sprite.Sprite):
@@ -181,26 +168,33 @@ class Creature(pygame.sprite.Sprite):
 
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
+        self.collide_walls(width, 0, 0, height)
+        if pygame.sprite.spritecollideany(self, walls_group):
+            for wall in walls_group:
+                if pygame.sprite.collide_rect(self, wall):
+                    self.collide_walls(wall.rect.x, (wall.rect.x + wall.rect.width),
+                                       wall.rect.y, (wall.rect.y + wall.rect.height))
 
-        if self.rect.x >= (width - self.rect.width):
+    def collide_walls(self, left_x, right_x, up_x, down_x):
+        if self.rect.x >= (left_x - self.rect.width):
             self.move_right = False
-            self.rect.x = width - self.rect.width
-        else:
+            self.rect.x = left_x - self.rect.width
+        elif not pygame.sprite.spritecollideany(self, walls_group):
             self.move_right = True
-        if self.rect.x <= 0:
+        if self.rect.x <= right_x:
             self.move_left = False
-            self.rect.x = 0
-        else:
+            self.rect.x = right_x
+        elif not pygame.sprite.spritecollideany(self, walls_group):
             self.move_left = True
 
-        if self.rect.y >= (height - self.rect.height):
+        if self.rect.y >= (down_x - self.rect.height):
             self.move_down = False
-            self.rect.y = (height - self.rect.height)
+            self.rect.y = (down_x - self.rect.height)
             self.move_up = True
         else:
             self.move_down = True
-        if self.rect.y <= 0:
-            self.rect.y = 0
+        if self.rect.y <= up_x:
+            self.rect.y = up_x
             self.move_up = False
 
 
@@ -239,7 +233,7 @@ class Game:
     def __init__(self, cell_size=50, win_width=1000, win_height=800):
         global width, height, cell_w, cell_h, gravity
         self.cell_h = self.cell_w = cell_w = cell_h = cell_size
-        gravity = 0.16
+        gravity = 0.1
         self.window_size = width, height = win_width, win_height
         self.player = None
         self.player_h = self.cell_h * 2
@@ -258,7 +252,7 @@ class Game:
         self.enemy_img = self.load_image('box.png')
         self.gun_img = self.load_image('spoon.png')
         self.bul_img = self.load_image('hit.png')
-        self.empty_cell = self.load_image("pasha.jpg")
+        self.empty_cell = self.load_image("yellow wall.jpg")
         self.wall_cell = self.load_image("mood.jpg")
 
         self.start_screen()
@@ -322,7 +316,7 @@ class Game:
                 self.player.movement("x", "stop")
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    terminate()
+                    self.terminate()
                 elif event.type == pygame.KEYDOWN:
                     pass
                 elif event.type == pygame.KEYUP and last_event[pygame.K_SPACE]:
@@ -374,7 +368,7 @@ class Game:
                 if level[y][x] == '.':
                     Cell(self.empty_cell, x, y)
                 elif level[y][x] == '#':
-                    Wall(self.empty_cell, x, y)
+                    Wall(self.wall_cell, x, y)
                 elif level[y][x] == '@':
                     Cell(self.empty_cell, x, y)
                     new_player = x, y
@@ -389,7 +383,7 @@ class Game:
 
 
 def main():
-    Game(cell_size=50, win_width=1000, win_height=800)
+    Game(cell_size=50, win_width=1000, win_height=1000)
 
 
 main()
