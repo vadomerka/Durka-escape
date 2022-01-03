@@ -119,12 +119,13 @@ class Bullet(pygame.sprite.Sprite):
 
 
 class Creature(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, img, self_width, self_height, health=100, damage=5, speed=2):
+    def __init__(self, img, pos_x, pos_y, self_width, self_height, health=100, damage=5, speed=2):
         super().__init__(all_sprites, creatures_group)
         self.image = pygame.transform.scale(img, (self_width, self_height))
         self.rect = self.image.get_rect().move(cell_w * pos_x, cell_h * pos_y)
         self.speed_x = 0
         self.speed_y = 0
+        self.player = None
         self.health = health
         self.damage = damage
         self.movement_speed = speed
@@ -199,21 +200,21 @@ class Creature(pygame.sprite.Sprite):
 
 
 class Enemy(Creature):
-    def __init__(self, pos_x, pos_y, img):
-        super().__init__(pos_x, pos_y, img, cell_w, cell_h)
+    def __init__(self, img, pos_x, pos_y):
+        super().__init__(img, pos_x, pos_y, cell_w, cell_h)
 
     def update(self):
         super().update()
         if self.health <= 0:
             self.kill()
-        if pygame.sprite.collide_mask(self, player):
+        if pygame.sprite.collide_mask(self, self.player):
             self.speed_x = 0
             self.health -= 0.5
 
 
 class Player(Creature):
-    def __init__(self, pos_x, pos_y, img, player_w, player_h):
-        super().__init__(pos_x, pos_y, img, player_w, player_h, health=100, damage=0, speed=5)
+    def __init__(self, img, pos_x, pos_y, player_w, player_h):
+        super().__init__(img, pos_x, pos_y, player_w, player_h, health=100, damage=0, speed=5)
         self.image = pygame.transform.scale(img, (player_w, player_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
@@ -291,7 +292,9 @@ class Game:
 
     def level(self, stage):
         x, y = self.generate_level(self.load_level("level " + str(stage)))
-        self.player = Player(x, y, self.player_img, self.player_w, self.player_h)
+        self.player = Player(self.player_img, x, y, self.player_w, self.player_h)
+        for creature in creatures_group:
+            creature.player = self.player
         running = True
         while running:
             self.screen.fill((0, 0, 0))
@@ -372,6 +375,9 @@ class Game:
                 elif level[y][x] == '@':
                     Cell(self.empty_cell, x, y)
                     new_player = x, y
+                elif level[y][x] == 'X':
+                    Cell(self.empty_cell, x, y)
+                    Enemy(self.enemy_img, x, y)
         return new_player
 
 
