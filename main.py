@@ -8,7 +8,7 @@ cell_h = cell_w = 50
 size = width, height = 1000, 1000
 player_h = cell_h * 2
 player_w = cell_w
-gravity = 0.16
+gravity = 0.1
 pygame.init()
 screen = pygame.display.set_mode(size)
 screen.fill(pygame.Color("black"))
@@ -17,6 +17,7 @@ fps = 60
 all_sprites = pygame.sprite.Group()
 cells_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
+walls_group = pygame.sprite.Group()
 
 
 def load_image(name, colorkey=None):
@@ -52,12 +53,9 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-class Cell(pygame.sprite.Sprite):
-    def __init__(self, cell_type, pos_x, pos_y):
-        super().__init__(cells_group, all_sprites)
-        self.image = pygame.transform.scale(cell_images[cell_type], (cell_w, cell_h))
-        self.rect = self.image.get_rect().move(
-            cell_w * pos_x, cell_h * pos_y)
+
+
+
 
 
 class Player(pygame.sprite.Sprite):
@@ -97,9 +95,11 @@ class Player(pygame.sprite.Sprite):
             pass
 
     def update(self):
-        self.speed_y += gravity
+
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
+
+        self.speed_y += gravity
         if self.rect.x >= (width - player_w):
             self.rect.x = (width - player_w)
         elif self.rect.x <= 0:
@@ -118,7 +118,7 @@ def generate_level(level):  # левел будет построен как в �
             if level[y][x] == '.':
                 Cell('empty', x, y)
             elif level[y][x] == '#':
-                Cell('wall', x, y)
+                Wall('wall', x, y)
             elif level[y][x] == '@':
                 Cell('empty', x, y)
                 players.append((x, y))
