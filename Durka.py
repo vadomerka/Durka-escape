@@ -8,10 +8,16 @@ all_sprites = pygame.sprite.Group()
 walls_group = pygame.sprite.Group()
 cells_group = pygame.sprite.Group()
 creatures_group = pygame.sprite.Group()
+entities_group = pygame.sprite.Group()
+weapons_group = pygame.sprite.Group()
 cell_w = cell_h = 50
 gravity = 0.16
-width = 1000
-height = 800
+win_w = 500
+win_h = 500
+pl_x = 0
+pl_y = 0
+level_width = 1000
+level_height = 800
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -59,50 +65,71 @@ class Wall(pygame.sprite.Sprite):
             cell_w * pos_x, cell_h * pos_y)
 
 
-class Weapon(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, img):
-        super().__init__(all_sprites)
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        if obj is not Player:
+            obj.rect.x += self.dx
+            obj.rect.y += self.dy
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        # if win_w // 2 <= target.rect.x <=
+        self.dx = -(target.rect.x + target.rect.w // 2 - win_w // 2)
+        # print(target.rect.x + target.rect.w // 2)
+        # print(target.rect.y)
+        if (target.rect.y + target.rect.h) <= (win_h // 2):
+            self.dy = -(target.rect.y + target.rect.h // 2 - win_h // 2)
+        else:
+            self.dy = 0
+
+
+class Entity(pygame.sprite.Sprite):
+    def __init__(self, img, pos_x, pos_y, groups=(all_sprites, entities_group)):
+        super().__init__(groups)
         self.image = pygame.transform.scale(img, (cell_w, cell_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
-        self.equipped = False
-        self.speed_x = 0
-        self.speed_y = 0
-        self.count = 0
-        self.pos = (pos_x, pos_y)
-        self.mask = pygame.mask.from_surface(self.image)
-        self.anim_on = False
+        self.speed_x = random.randint(-5, 5)
+        self.speed_y = random.randint(-3, 0)
 
     def update(self):
-        self.count += 1
-        if self.count == 10:
-            self.image = pygame.transform.scale(load_image('spoon.png'), (cell_w, cell_h))
-            self.anim_on = False
-        if pygame.sprite.collide_mask(self, player):
-            self.equipped = True
-        if self.equipped and not self.anim_on:
-            self.rect.y = player.rect.y
-            self.rect.x = player.rect.x - 20
-        elif self.equipped and self.anim_on:
-            self.rect.x = player.rect.x - 30
-            self.rect.y = player.rect.y + 30
-        else:
-            self.speed_y += gravity
-            self.rect.x += self.speed_x
-            self.rect.y += self.speed_y
-            if self.rect.x >= (width - player_w):
-                self.speed_x = -self.speed_x
-            elif self.rect.x <= 0:
-                self.speed_x = -self.speed_x
-            if self.rect.y >= (height - player_h // 2):
-                self.rect.y = (height - player_h // 2)
-            elif self.rect.y <= 0:
-                self.rect.y = 0
+        self.speed_y += gravity
+        self.rect.x += self.speed_x
+        self.rect.y += self.speed_y
+        self.collide_walls(level_width, 0, 0, level_height)
+
+    def collide_walls(self, left_x, right_x, up_x, down_x):
+        if self.rect.x >= (left_x - self.rect.width):
+            self.speed_x = 0
+            self.rect.x = left_x - self.rect.width
+        if self.rect.x <= right_x:
+            self.speed_x = 0
+            self.rect.x = right_x
+
+        if self.rect.y >= (down_x - self.rect.height):
+            self.speed_y = 0
+            self.speed_x = 0
+            self.rect.y = (down_x - self.rect.height)
+        if self.rect.y <= up_x:
+            self.rect.y = up_x
+            self.speed_y = 0
+
+
+class Weapon(Entity):
+    def __init__(self, *entity_args):
+        super().__init__(*entity_args, groups=(all_sprites, entities_group, weapons_group))
+
+    def update(self):
+        super().update()
 
     def shoot(self):
         self.image = pygame.transform.scale(load_image('hit_spoon.png'), (player_w, player_h // 2))
-        self.anim_on = True
-        self.count = 0
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -170,7 +197,7 @@ class Creature(pygame.sprite.Sprite):
             self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
-        self.collide_walls(width, 0, 0, height)
+        self.collide_walls(level_width, 0, 0, level_height)
         if pygame.sprite.spritecollideany(self, walls_group):
             for wall in walls_group:
                 if pygame.sprite.collide_rect(self, wall):
@@ -208,7 +235,7 @@ class Enemy(Creature):
         super().update()
         if pygame.sprite.collide_mask(self, self.player):
             self.speed_x = 0
-            self.player.health -= 0.5
+            self.player.health -= 1
 
 
 class Player(Creature):
@@ -217,6 +244,8 @@ class Player(Creature):
         self.image = pygame.transform.scale(img, (player_w, player_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
+        # self.level_x = pos_x * cell_w
+        # self.level_y = pos_y * cell_h
         self.speed_x = 0
         self.speed_y = 0
         self.pos = (pos_x, pos_y)
@@ -230,11 +259,11 @@ class Player(Creature):
 
 
 class Game:
-    def __init__(self, cell_size=50, win_width=1000, win_height=800):
-        global width, height, cell_w, cell_h, gravity
+    def __init__(self, cell_size=50, win_width=500, win_height=500):
+        global level_width, level_height, cell_w, cell_h, gravity, win_w, win_h
         self.cell_h = self.cell_w = cell_w = cell_h = cell_size
         gravity = 0.1
-        self.window_size = width, height = win_width, win_height
+        self.window_size = win_w, win_h = win_width, win_height
         self.player = None
         self.player_h = self.cell_h * 2
         self.player_w = self.cell_w
@@ -254,8 +283,10 @@ class Game:
         self.bul_img = self.load_image('hit.png')
         self.empty_cell = self.load_image("yellow wall.jpg")
         self.wall_cell = self.load_image("mood.jpg")
+        self.heart_image = pygame.transform.scale(self.load_image("heart.png"), (cell_w, cell_h))
 
         self.start_screen()
+        self.level(stage=self.stage)
 
     def start_screen(self):
         intro_text = ["ЗАСТАВКА", "",
@@ -277,7 +308,6 @@ class Game:
             self.screen.blit(string_rendered, intro_rect)
         running = True
         while running:
-            # self.screen.fill((0, 0, 0))  # здесь должна быть заставка
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.terminate()
@@ -287,13 +317,15 @@ class Game:
             all_sprites.update()
             self.clock.tick(self.fps)
             pygame.display.flip()
-        self.level(stage=self.stage)
+
+    def draw_interface(self):
+        for hp in range(0, self.player.health, 5):
+            self.screen.blit(self.heart_image, (hp * 10, 0))
 
     def level(self, stage):
-        x, y = self.generate_level(self.load_level("level " + str(stage)))
-        self.player = Player(self.player_img, x, y, self.player_w, self.player_h)
-        for creature in creatures_group:
-            creature.player = self.player
+        self.generate_level(self.load_level(stage))
+        # camera = Camera()
+
         running = True
         while running:
             self.screen.fill((0, 0, 0))
@@ -302,20 +334,13 @@ class Game:
                 self.player.movement("y", "up")
             if keys[pygame.K_LEFT]:
                 self.player.movement("x", "left")
-                # player.direction = 1
-                # player.flip()
             if keys[pygame.K_RIGHT]:
-                # player.flip()
-                # player.direction = 0
                 self.player.movement("x", "right")
-            if keys[pygame.K_DOWN]:
-                pass
-                # player.movement("y", "down")
             if keys[pygame.K_SPACE]:
-                # print(1)
                 pass
             if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):  # если юзер не двигается по х, тогда стоп
                 self.player.movement("x", "stop")
+            last_event = keys
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.terminate()
@@ -325,13 +350,13 @@ class Game:
                     gun.shoot()
                 elif event.type == pygame.K_SPACE:
                     print(1)
-                # if random.random() > 0.5:
-                #     enemy.movement("x", "right")
-                # else:
-                #     enemy.movement("x", "left")
-            last_event = keys
+            # camera.update(self.player)
+            # обновляем положение всех спрайтов
+            # for sprite in all_sprites:
+            #     camera.apply(sprite)
             all_sprites.draw(self.screen)
             all_sprites.update()
+            self.draw_interface()
             self.clock.tick(self.fps)
             pygame.display.flip()
 
@@ -355,16 +380,21 @@ class Game:
         return image
 
     def load_level(self, filename, file_path="data/levels/"):
-        filename = file_path + filename
+        global level_width, level_height
+        filename = file_path + "level " + str(filename)
         # читаем уровень, убирая символы перевода строки
         with open(filename, 'r') as mapFile:
             level_map = [line.strip() for line in mapFile]
 
         max_width = max(map(len, level_map))
-        return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+        level_map = list(map(lambda x: x.ljust(max_width, '.'), level_map))
+        level_height = len(level_map) * cell_h
+        level_width = len(level_map[0]) * cell_w
+        return level_map
 
     def generate_level(self, level):
-        new_player, x, y = None, None, None
+        global pl_x, pl_y
+        playerxy, enemies, entities = None, [], []
         for y in range(len(level)):
             for x in range(len(level[y])):
                 if level[y][x] == '.':
@@ -373,18 +403,22 @@ class Game:
                     Wall(self.wall_cell, x, y)
                 elif level[y][x] == '@':
                     Cell(self.empty_cell, x, y)
-                    new_player = x, y
+                    playerxy = x, y
                 elif level[y][x] == 'X':
                     Cell(self.empty_cell, x, y)
-                    Enemy(self.enemy_img, x, y)
-        return new_player
-
-
-# player = Player(5, 5, player_img)
-# dragon = AnimatedSprite(load_image("dragon_sheet8x2.png"), 8, 2, 50, 50)
-# gun = Weapon(7, 8, gun_img)
-# enemy = Enemy(7, 7, enemy_img)
-# # bullet = Bullet(bul_img)
+                    enemies.append((Enemy, self.enemy_img, x, y))
+                elif level[y][x] == 'W':
+                    Cell(self.empty_cell, x, y)
+                    entities.append((Weapon, self.gun_img, x, y))
+        pl_x, pl_y = playerxy[0] * cell_w, playerxy[1] * cell_h
+        for clas, img, x, y in enemies:
+            clas(img, x, y)
+        for clas, img, x, y in entities:
+            clas(img, x, y)
+        x, y = playerxy
+        self.player = Player(self.player_img, x, y, self.player_w, self.player_h)
+        for creature in creatures_group:
+            creature.player = self.player
 
 
 def main():
