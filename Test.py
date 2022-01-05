@@ -36,17 +36,53 @@ def load_image(name, colorkey=None):
 
 
 def load_level(filename):
-    filename = "data/" + filename
+    filename = "data/levels/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
 
     max_width = max(map(len, level_map))
-    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+    print(list(map(lambda x: list(x.ljust(max_width, '.')), level_map)))
+    return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
 
 
-class Level:
-    pass
+def generate_level(level):
+    new_player, x, y = None, None, None
+    for y in range(len(level)):
+        for x in range(len(level[y])):
+            if level[y][x] == '.':
+                wall = Wall('empty', x, y * 2)
+                walls.append(wall)
+            if level[y][x] == '#':
+                wall = Wall('wall', x, y * 2)
+                walls.append(wall)
+            elif level[y][x] == '@':
+                wall = Wall('empty', x, y * 2)
+                walls.append(wall)
+                new_player = Player(x, y * 2, player_img)
+                level[y][x] = "."
+    print(walls)
+    return new_player, x, y
+
+
+class SpriteGroup(pygame.sprite.Group):
+
+    def __init__(self):
+        super().__init__()
+
+    def get_event(self, event):
+        for sprite in self:
+            sprite.get_event(event)
+
+
+class Sprite(pygame.sprite.Sprite):
+
+    def __init__(self, group):
+        super().__init__(group)
+        self.rect = None
+
+    def get_event(self, event):
+        pass
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -78,9 +114,9 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.count += 1
 
 
-class Gun(pygame.sprite.Sprite):
+class Gun(Sprite):
     def __init__(self, pos_x, pos_y, img):
-        super().__init__(all_sprites)
+        super().__init__(player_group)
         self.image = pygame.transform.scale(img, (player_w, player_h // 2))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
@@ -126,9 +162,9 @@ class Bullet(pygame.sprite.Sprite):
         #self.mask = pygame.mask.from_surface(self.image)
 
 
-class Enemy(pygame.sprite.Sprite):
+class Enemy(Sprite):
     def __init__(self, pos_x, pos_y, img):
-        super().__init__(all_sprites)
+        super().__init__(player_group)
         self.image = pygame.transform.scale(img, (player_w, player_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
@@ -165,9 +201,11 @@ class Enemy(pygame.sprite.Sprite):
             self.rect.y = 0
 
 
-class Wall(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, img):
+class Wall(Sprite):
+    def __init__(self, img, pos_x, pos_y):
         super().__init__(all_sprites)
+        self.name = img
+        img = tile_images[img]
         self.image = pygame.transform.scale(img, (player_w, player_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
@@ -179,24 +217,25 @@ class Wall(pygame.sprite.Sprite):
 
     def update(self):
         if pygame.sprite.collide_mask(self, player):
-            if player.rect.y > self.rect.y - 100:
-                player.rect.y = self.rect.y - 100
-                player.speed_y = 0
-                player.plat = True
-            else:
-                player.plat = False
-            if player.rect.y <= self.rect.y - 100 and player.rect.x == self.rect.x:
-                player.speed_x = 0
-        else:
-            player.plat = False
+            pass
+            #if player.rect.y > self.rect.y - 100:
+            #    player.rect.y = self.rect.y - 100
+            #    player.speed_y = 0
+            #    player.plat = True
+            #else:
+            #    player.plat = False
+            #if player.rect.y <= self.rect.y - 100 and player.rect.x == self.rect.x:
+            #    player.speed_x = 0
+        #else:
+        #    player.plat = False
 
             #terminate()
             #self.kill()
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, img, all_sprites):
-        super().__init__(all_sprites)
+    def __init__(self, pos_x, pos_y, img):
+        super().__init__(player_group)
         self.image = pygame.transform.scale(img, (player_w, player_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
@@ -204,7 +243,6 @@ class Player(pygame.sprite.Sprite):
         self.speed_y = 0
         self.pos = (pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
-        self.direction = 0
         self.plat = False
 
     def movement(self, line, direction="up"):
@@ -237,8 +275,7 @@ class Player(pygame.sprite.Sprite):
             pass
 
     def update(self):
-        if pygame.sprite.collide_mask(self, wall):
-            self.speed_x = 0
+        self.collide()
         self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y * 2
@@ -253,13 +290,37 @@ class Player(pygame.sprite.Sprite):
         elif self.rect.y <= 0:
             self.rect.y = 0
 
-    def flip(self):
-        if self.direction == 0 or 1:
-            self.image = pygame.transform.flip(self.image, flip_y=False, flip_x=True)
-            self.direction = 2
+    def collide(self):
+        for p in walls:
+            if p.name != 'empty':
+                if pygame.sprite.collide_mask(self, p):
+                    if self.speed_x > 0 and self.rect.y > p.rect.y + 100:
+                        self.speed_x = 0
+                        self.rect.x = p.rect.x + 50
+                    elif self.speed_x < 0:
+                        self.speed_x = 0
+                    if self.speed_y > 0:
+                        self.plat = True
+                        self.rect.y = p.rect.y - 100
+                        self.speed_y = 0
+                    elif self.speed_y < 0:
+                        self.speed_y = 0
+                        self.rect.y = p.rect.y
+                        self.plat = True
+
+                else:
+                    self.plat = False
 
 
 if __name__ == '__main__':
+    cell_h = cell_w = 50
+    size = width, height = 1000, 800
+    player_h = cell_h * 2
+    player_w = cell_w
+    gravity = 0.16
+    horizontal_borders = pygame.sprite.Group()
+    vertical_borders = pygame.sprite.Group()
+
     pygame.init()
     screen = pygame.display.set_mode(size)
     screen.fill(pygame.Color("black"))
@@ -270,13 +331,23 @@ if __name__ == '__main__':
     gun_img = load_image('spoon.png')
     bul_img = load_image('hit.png')
     wall_img = load_image('box.png')
-    all_sprites = pygame.sprite.Group()
+    tile_images = {
+        'wall': load_image('box.png'),
+        'empty': load_image('grass.png')
+    }
 
-    player = Player(5, 5, player_img, all_sprites)
-    dragon = AnimatedSprite(load_image("dragon_sheet8x2.png"), 8, 2, 50, 50)
+    all_sprites = SpriteGroup()
+    player_group = SpriteGroup()
+
+    #level_map = load_level('level 1.txt')
+    walls = []
+    level_map = load_level('map.map')
+
+    player, max_x, max_y = generate_level(level_map)
+    #player = Player(5, 5, player_img)
+    #dragon = AnimatedSprite(load_image("dragon_sheet8x2.png"), 8, 2, 50, 50)
     gun = Gun(7, 8, gun_img)
     enemy = Enemy(7, 7, enemy_img)
-    wall = Wall(12, 14, wall_img)
     #bullet = Bullet(bul_img)
 
     running = True
@@ -287,16 +358,11 @@ if __name__ == '__main__':
             player.movement("y", "up")
         if keys[pygame.K_LEFT]:
             player.movement("x", "left")
-            #player.direction = 1
-            #player.flip()
         if keys[pygame.K_RIGHT]:
-            #player.flip()
-            #player.direction = 0
             player.movement("x", "right")
         if keys[pygame.K_DOWN]:
             player.movement("y", "down")
         if keys[pygame.K_SPACE]:
-            #print(1)
             pass
         if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):  # если юзер не двигается по х, тогда стоп
             player.movement("x", "stop")
@@ -315,6 +381,8 @@ if __name__ == '__main__':
                 enemy.movement("x", "left")
         last_event = keys
         all_sprites.draw(screen)
+        player_group.draw(screen)
         all_sprites.update()
+        player_group.update()
         clock.tick(fps)
         pygame.display.flip()
