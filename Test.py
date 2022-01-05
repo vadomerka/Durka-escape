@@ -61,7 +61,8 @@ def generate_level(level):
                 walls.append(wall)
                 new_player = Player(x, y * 2, player_img)
                 level[y][x] = "."
-    print(walls)
+        print(level[y])
+    #print(walls)
     return new_player, x, y
 
 
@@ -112,6 +113,14 @@ class AnimatedSprite(pygame.sprite.Sprite):
             self.cur_frame = (self.cur_frame + 1) % len(self.frames)
             self.image = self.frames[self.cur_frame]
         self.count += 1
+
+
+class MiniMap(Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(mini_map)
+        self.image = pygame.transform.scale(load_image('creature.png'), (player_w * 2, player_h))
+        self.rect = self.image.get_rect().move(
+            cell_w * pos_x, cell_h * pos_y)
 
 
 class Gun(Sprite):
@@ -338,6 +347,7 @@ if __name__ == '__main__':
 
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
+    mini_map = SpriteGroup()
 
     #level_map = load_level('level 1.txt')
     walls = []
@@ -348,6 +358,7 @@ if __name__ == '__main__':
     #dragon = AnimatedSprite(load_image("dragon_sheet8x2.png"), 8, 2, 50, 50)
     gun = Gun(7, 8, gun_img)
     enemy = Enemy(7, 7, enemy_img)
+    min_map = MiniMap(18, 0)
     #bullet = Bullet(bul_img)
 
     running = True
@@ -363,7 +374,7 @@ if __name__ == '__main__':
         if keys[pygame.K_DOWN]:
             player.movement("y", "down")
         if keys[pygame.K_SPACE]:
-            pass
+            print(player.rect.y, round(player.rect.x * 2 / 100 + 1))
         if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):  # если юзер не двигается по х, тогда стоп
             player.movement("x", "stop")
         for event in pygame.event.get():
@@ -382,7 +393,9 @@ if __name__ == '__main__':
         last_event = keys
         all_sprites.draw(screen)
         player_group.draw(screen)
+        mini_map.draw(screen)
         all_sprites.update()
         player_group.update()
+        mini_map.update()
         clock.tick(fps)
         pygame.display.flip()
