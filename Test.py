@@ -63,7 +63,7 @@ def generate_level(level):
                 level[y][x] = "."
         print(level[y])
     #print(walls)
-    return new_player, x, y
+    return new_player, x, y, level
 
 
 class SpriteGroup(pygame.sprite.Group):
@@ -84,6 +84,23 @@ class Sprite(pygame.sprite.Sprite):
 
     def get_event(self, event):
         pass
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
+        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -253,6 +270,9 @@ class Player(pygame.sprite.Sprite):
         self.pos = (pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
         self.plat = False
+        self.min_y = height - player_h
+        self.max_x = width - player_w
+        self.min_x = 0
 
     def movement(self, line, direction="up"):
         if line == "x":
@@ -272,7 +292,7 @@ class Player(pygame.sprite.Sprite):
             if direction == "down":
                 vy = 0
             elif direction == "up":
-                if self.rect.y == (height - player_h) or self.plat:
+                if self.rect.y == self.min_y or self.plat:
                     vy = -5
                 else:
                     vy = self.speed_y
@@ -285,40 +305,51 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         self.collide()
+        if self.rect.y == self.min_y:
+            self.plat = True
+        else:
+            self.plat = False
         self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y * 2
-        if self.rect.x >= (width - player_w):
-            self.rect.x = (width - player_w)
-        elif self.rect.x <= 0:
-            self.rect.x = 0
-        if self.plat:
-            self.rect.y = self.rect.y
-        elif self.rect.y >= (height - player_h):
-            self.rect.y = (height - player_h)
-        elif self.rect.y <= 0:
-            self.rect.y = 0
+        if self.rect.x >= self.max_x:
+            self.rect.x = self.max_x
+        elif self.rect.x <= self.min_x:
+            self.rect.x = self.min_x
+        #if self.plat:
+        #    self.rect.y = self.rect.y
+        if self.rect.y >= self.min_y:
+            self.rect.y = self.min_y
+        if self.rect.y <= self.max_y:
+            self.rect.y = self.max_y
 
     def collide(self):
-        for p in walls:
-            if p.name != 'empty':
-                if pygame.sprite.collide_mask(self, p):
-                    if self.speed_x > 0 and self.rect.y > p.rect.y + 100:
-                        self.speed_x = 0
-                        self.rect.x = p.rect.x + 50
-                    elif self.speed_x < 0:
-                        self.speed_x = 0
-                    if self.speed_y > 0:
-                        self.plat = True
-                        self.rect.y = p.rect.y - 100
-                        self.speed_y = 0
-                    elif self.speed_y < 0:
-                        self.speed_y = 0
-                        self.rect.y = p.rect.y
-                        self.plat = True
+        global gravity
+        #print(player.rect.y // 100 + 1, round(player.rect.x * 2 / 100 + 1), level[player.rect.y // 100 + 1][round(player.rect.x * 2 / 100 + 1)])
+        if level[self.rect.y // 100 + 1][round(self.rect.x * 2 / 100)] == '#':
+            self.min_y = self.rect.y
+            gravity = 0
+        else:
+            self.min_y = height - player_h
+            gravity = 0.16
 
-                else:
-                    self.plat = False
+        if level[self.rect.y // 100][round(self.rect.x * 2 / 100)] == '#':
+            self.max_y = (self.rect.y + 100) // 100 * 100
+            print('Yes')
+            print(self.max_y)
+        else:
+            self.max_y = 0
+
+        if level[player.rect.y // 100][round((player.rect.x + 30) / 50)] == '#':
+            self.max_x = self.rect.x
+        else:
+            self.max_x = width - player_w
+
+        if level[self.rect.y // 100][round((self.rect.x - 30) / 50)] == '#':
+            self.min_x = self.rect.x
+            #print(self.min_x)
+        else:
+            self.min_x = 0
 
 
 if __name__ == '__main__':
@@ -353,7 +384,8 @@ if __name__ == '__main__':
     walls = []
     level_map = load_level('map.map')
 
-    player, max_x, max_y = generate_level(level_map)
+    player, max_x, max_y, level = generate_level(level_map)
+    print(level)
     #player = Player(5, 5, player_img)
     #dragon = AnimatedSprite(load_image("dragon_sheet8x2.png"), 8, 2, 50, 50)
     gun = Gun(7, 8, gun_img)
@@ -374,7 +406,7 @@ if __name__ == '__main__':
         if keys[pygame.K_DOWN]:
             player.movement("y", "down")
         if keys[pygame.K_SPACE]:
-            print(player.rect.y, round(player.rect.x * 2 / 100 + 1))
+            print(player.rect.y // 100 + 1, round(player.rect.x * 2 / 100 + 1))
         if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):  # если юзер не двигается по х, тогда стоп
             player.movement("x", "stop")
         for event in pygame.event.get():
