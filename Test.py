@@ -325,18 +325,16 @@ class Player(pygame.sprite.Sprite):
 
     def collide(self):
         global gravity
-        #print(player.rect.y // 100 + 1, round(player.rect.x * 2 / 100 + 1), level[player.rect.y // 100 + 1][round(player.rect.x * 2 / 100 + 1)])
         if level[self.rect.y // 100 + 1][round(self.rect.x * 2 / 100)] == '#':
-            self.min_y = self.rect.y
+            self.min_y = (self.rect.y // 100) * 100
             gravity = 0
+            #print(self.min_y)
         else:
             self.min_y = height - player_h
             gravity = 0.16
 
         if level[self.rect.y // 100][round(self.rect.x * 2 / 100)] == '#':
             self.max_y = (self.rect.y + 100) // 100 * 100
-            print('Yes')
-            print(self.max_y)
         else:
             self.max_y = 0
 
@@ -347,9 +345,11 @@ class Player(pygame.sprite.Sprite):
 
         if level[self.rect.y // 100][round((self.rect.x - 30) / 50)] == '#':
             self.min_x = self.rect.x
-            #print(self.min_x)
         else:
             self.min_x = 0
+
+        if level[player.rect.y // 100][round(player.rect.x * 2 / 100)] == '#':
+            self.min_y = player.rect.y - 100
 
 
 if __name__ == '__main__':
