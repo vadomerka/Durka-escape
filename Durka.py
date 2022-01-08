@@ -16,6 +16,7 @@ win_w = 500
 win_h = 500
 pl_x = 0
 pl_y = 0
+level = None
 level_width = 1000
 level_height = 800
 
@@ -191,43 +192,59 @@ class Creature(pygame.sprite.Sprite):
             pass
 
     def update(self):
-        if self.health <= 0:
-            self.kill()
-        if self.move_down:
-            self.speed_y += gravity
+        self.collide()
+        if self.rect.y == self.min_y:
+            self.plat = True
+            self.speed_y -= gravity
+        else:
+            self.plat = False
+        self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
-        self.collide_walls(0, level_width, 0, level_height)
+        if self.rect.x >= self.max_x:
+            self.rect.x = self.max_x
+        if self.rect.x <= self.min_x:
+            self.rect.x = self.min_x
 
-        if pygame.sprite.spritecollideany(self, walls_group):
-            for wall in walls_group:
-                if pygame.sprite.collide_rect(self, wall):
-                    self.collide_walls(wall.rect.x, (wall.rect.x + wall.rect.width),
-                                       wall.rect.y, (wall.rect.y + wall.rect.height))
+        if self.rect.y >= self.min_y:
+            self.rect.y = self.min_y
+        if self.rect.y <= self.max_y:
+            self.rect.y = self.max_y
 
-    def collide_walls(self, left_x, right_x, up_x, down_x):
-        pass
-        # if self.rect.x >= (left_x - self.rect.width):
-        #     self.move_right = False
-        #     self.rect.x = left_x - self.rect.width
-        # elif not pygame.sprite.spritecollideany(self, walls_group):
-        #     self.move_right = True
-        # if self.rect.x <= right_x:
-        #     self.move_left = False
-        #     self.rect.x = right_x
-        # elif not pygame.sprite.spritecollideany(self, walls_group):
-        #     self.move_left = True
-        #
-        # if self.rect.y >= (down_x - self.rect.height):
-        #     self.move_down = False
-        #     self.rect.y = (down_x - self.rect.height)
-        #     self.move_up = True
-        # else:
-        #     self.move_down = True
-        # if self.rect.y <= up_x:
-        #     self.rect.y = up_x
-        #     self.move_up = False
+    def collide(self):
+        global gravity
+        row = self.rect.y // cell_h + self.rect.h // cell_h
+        col = (self.rect.x + 5) // cell_w
+        if 0 <= row < level_height // cell_h and 0 <= col < level_width // cell_h:
+            if level[row][col] == '#' or \
+                    level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + cell_w - 5) // cell_w] == '#':
+                self.min_y = (self.rect.y // cell_h) * cell_h
+            else:
+                self.min_y = level_height - self.rect.height
 
+            if level[self.rect.y // cell_h][(self.rect.x + 5) // cell_w] == '#' or \
+                    level[self.rect.y // cell_h][(self.rect.x + cell_w - 5) // cell_w] == '#':
+                self.max_y = self.rect.y // cell_h * cell_h
+                self.speed_y = 0
+                self.rect.y = self.max_y + cell_h
+            else:
+                self.max_y = 0
+
+            if level[self.rect.y // cell_w][self.rect.x // cell_w + self.rect.w // cell_w] == '#' or \
+                    level[self.rect.y // cell_w + 1][self.rect.x // cell_w + self.rect.w // cell_w] == '#':
+                self.max_x = self.rect.x
+            else:
+                self.max_x = level_width - self.rect.w
+
+            if level[self.rect.y // cell_h][self.rect.x // cell_w] == '#' or \
+                    level[self.rect.y // cell_h + 1][self.rect.x // cell_w] == '#':
+                self.min_x = self.rect.x
+                self.rect.x += 1
+            else:
+                self.min_x = 0
+
+        # if level[player.rect.y // 100][round(player.rect.x * 2 / 100)] == '#':
+        #     self.min_y = player.rect.y - 100
 
 class Enemy(Creature):
     def __init__(self, img, pos_x, pos_y):
@@ -325,7 +342,8 @@ class Game:
             self.screen.blit(self.heart_image, (hp * 10, 0))
 
     def level(self, stage):
-        self.generate_level(self.load_level(stage))
+        self.load_level(stage)
+        self.generate_level()
         # camera = Camera()
 
         running = True
@@ -382,7 +400,7 @@ class Game:
         return image
 
     def load_level(self, filename, file_path="data/levels/"):
-        global level_width, level_height
+        global level_width, level_height, level
         filename = file_path + "level " + str(filename)
         # читаем уровень, убирая символы перевода строки
         with open(filename, 'r') as mapFile:
@@ -392,10 +410,10 @@ class Game:
         level_map = list(map(lambda x: x.ljust(max_width, '.'), level_map))
         level_height = len(level_map) * cell_h
         level_width = len(level_map[0]) * cell_w
-        return level_map
+        level = level_map
 
-    def generate_level(self, level):
-        global pl_x, pl_y
+    def generate_level(self):
+        global pl_x, pl_y, level
         playerxy, enemies, entities = None, [], []
         for y in range(len(level)):
             for x in range(len(level[y])):
@@ -428,44 +446,3 @@ def main():
 
 
 main()
-
-"""running = True
-        while running:
-            screen.fill((0, 0, 0))
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_UP]:
-                player.movement("y", "up")
-            if keys[pygame.K_LEFT]:
-                player.movement("x", "left")
-                # player.direction = 1
-                # player.flip()
-            if keys[pygame.K_RIGHT]:
-                # player.flip()
-                # player.direction = 0
-                player.movement("x", "right")
-            if keys[pygame.K_DOWN]:
-                pass
-                # player.movement("y", "down")
-            if keys[pygame.K_SPACE]:
-                # print(1)
-                pass
-            if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):  # если юзер не двигается по х, тогда стоп
-                player.movement("x", "stop")
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    terminate()
-                elif event.type == pygame.KEYDOWN:
-                    pass
-                elif event.type == pygame.KEYUP and last_event[pygame.K_SPACE]:
-                    gun.shoot()
-                elif event.type == pygame.K_SPACE:
-                    print(1)
-                if random.random() > 0.5:
-                    enemy.movement("x", "right")
-                else:
-                    enemy.movement("x", "left")
-            last_event = keys
-            all_sprites.draw(screen)
-            all_sprites.update()
-            clock.tick(fps)
-            pygame.display.flip()"""
