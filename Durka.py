@@ -197,7 +197,8 @@ class Creature(pygame.sprite.Sprite):
             self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
-        self.collide_walls(level_width, 0, 0, level_height)
+        self.collide_walls(0, level_width, 0, level_height)
+
         if pygame.sprite.spritecollideany(self, walls_group):
             for wall in walls_group:
                 if pygame.sprite.collide_rect(self, wall):
@@ -205,26 +206,27 @@ class Creature(pygame.sprite.Sprite):
                                        wall.rect.y, (wall.rect.y + wall.rect.height))
 
     def collide_walls(self, left_x, right_x, up_x, down_x):
-        if self.rect.x >= (left_x - self.rect.width):
-            self.move_right = False
-            self.rect.x = left_x - self.rect.width
-        elif not pygame.sprite.spritecollideany(self, walls_group):
-            self.move_right = True
-        if self.rect.x <= right_x:
-            self.move_left = False
-            self.rect.x = right_x
-        elif not pygame.sprite.spritecollideany(self, walls_group):
-            self.move_left = True
-
-        if self.rect.y >= (down_x - self.rect.height):
-            self.move_down = False
-            self.rect.y = (down_x - self.rect.height)
-            self.move_up = True
-        else:
-            self.move_down = True
-        if self.rect.y <= up_x:
-            self.rect.y = up_x
-            self.move_up = False
+        pass
+        # if self.rect.x >= (left_x - self.rect.width):
+        #     self.move_right = False
+        #     self.rect.x = left_x - self.rect.width
+        # elif not pygame.sprite.spritecollideany(self, walls_group):
+        #     self.move_right = True
+        # if self.rect.x <= right_x:
+        #     self.move_left = False
+        #     self.rect.x = right_x
+        # elif not pygame.sprite.spritecollideany(self, walls_group):
+        #     self.move_left = True
+        #
+        # if self.rect.y >= (down_x - self.rect.height):
+        #     self.move_down = False
+        #     self.rect.y = (down_x - self.rect.height)
+        #     self.move_up = True
+        # else:
+        #     self.move_down = True
+        # if self.rect.y <= up_x:
+        #     self.rect.y = up_x
+        #     self.move_up = False
 
 
 class Enemy(Creature):

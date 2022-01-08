@@ -8,7 +8,7 @@ cell_h = cell_w = 50
 size = width, height = 1000, 800
 player_h = cell_h * 2
 player_w = cell_w
-gravity = 0.16
+gravity = 0.1
 horizontal_borders = pygame.sprite.Group()
 vertical_borders = pygame.sprite.Group()
 
@@ -36,13 +36,13 @@ def load_image(name, colorkey=None):
 
 
 def load_level(filename):
-    filename = "data/levels/" + filename
+    filename = "data/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
 
     max_width = max(map(len, level_map))
-    print(list(map(lambda x: list(x.ljust(max_width, '.')), level_map)))
+    # print(list(map(lambda x: list(x.ljust(max_width, '.')), level_map)))
     return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
 
 
@@ -51,15 +51,15 @@ def generate_level(level):
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
-                wall = Wall('empty', x, y * 2)
+                wall = Wall('empty', x, y)
                 walls.append(wall)
             if level[y][x] == '#':
-                wall = Wall('wall', x, y * 2)
+                wall = Wall('wall', x, y)
                 walls.append(wall)
             elif level[y][x] == '@':
-                wall = Wall('empty', x, y * 2)
+                wall = Wall('empty', x, y)
                 walls.append(wall)
-                new_player = Player(x, y * 2, player_img)
+                new_player = Player(x, y, player_img)
                 level[y][x] = "."
         print(level[y])
     #print(walls)
@@ -232,7 +232,7 @@ class Wall(Sprite):
         super().__init__(all_sprites)
         self.name = img
         img = tile_images[img]
-        self.image = pygame.transform.scale(img, (player_w, player_h))
+        self.image = pygame.transform.scale(img, (cell_w, cell_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
         self.speed_x = 0
@@ -244,19 +244,19 @@ class Wall(Sprite):
     def update(self):
         if pygame.sprite.collide_mask(self, player):
             pass
-            #if player.rect.y > self.rect.y - 100:
-            #    player.rect.y = self.rect.y - 100
-            #    player.speed_y = 0
-            #    player.plat = True
-            #else:
-            #    player.plat = False
-            #if player.rect.y <= self.rect.y - 100 and player.rect.x == self.rect.x:
-            #    player.speed_x = 0
-        #else:
-        #    player.plat = False
+            # if player.rect.y > self.rect.y - 100:
+            #     player.rect.y = self.rect.y - 100
+            #     player.speed_y = 0
+            #     player.plat = True
+            # else:
+            #     player.plat = False
+            # if player.rect.y <= self.rect.y - 100 and player.rect.x == self.rect.x:
+            #     player.speed_x = 0
+        # else:
+        #     player.plat = False
 
-            #terminate()
-            #self.kill()
+            # terminate()
+            # self.kill()
 
 
 class Player(pygame.sprite.Sprite):
@@ -308,17 +308,17 @@ class Player(pygame.sprite.Sprite):
         self.collide()
         if self.rect.y == self.min_y:
             self.plat = True
+            self.speed_y -= gravity
         else:
             self.plat = False
         self.speed_y += gravity
         self.rect.x += self.speed_x
-        self.rect.y += self.speed_y * 2
+        self.rect.y += self.speed_y
         if self.rect.x >= self.max_x:
             self.rect.x = self.max_x
-        elif self.rect.x <= self.min_x:
+        if self.rect.x <= self.min_x:
             self.rect.x = self.min_x
-        #if self.plat:
-        #    self.rect.y = self.rect.y
+
         if self.rect.y >= self.min_y:
             self.rect.y = self.min_y
         if self.rect.y <= self.max_y:
@@ -326,33 +326,36 @@ class Player(pygame.sprite.Sprite):
 
     def collide(self):
         global gravity
-        #objects = ['#', ]
-        if level[self.rect.y // 100 + 1][round(self.rect.x * 2 / 100)] == '#':
-            self.min_y = (self.rect.y // 100) * 100
-            gravity = 0
-            #print(self.min_y)
+        if level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + 5) // cell_w] == '#' or \
+                level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + cell_w - 5) // cell_w] == '#':
+            self.min_y = (self.rect.y // cell_h) * cell_h
+            self.plat = True
         else:
             self.min_y = height - player_h
-            gravity = 0.16
 
-        if level[self.rect.y // 100][round(self.rect.x * 2 / 100)] == '#':
-            self.max_y = (self.rect.y + 100) // 100 * 100
+        if level[self.rect.y // cell_h][(self.rect.x + 5) // cell_w] == '#' or \
+                level[self.rect.y // cell_h][(self.rect.x + cell_w - 5) // cell_w] == '#':
+            self.max_y = self.rect.y // cell_h * cell_h
+            self.speed_y = 0
+            self.rect.y = self.max_y + cell_h
         else:
             self.max_y = 0
 
-        if level[self.rect.y // 100][self.rect.x // 50 + 1] == '#':
-            print(self.rect.x)
+        if level[self.rect.y // cell_w][self.rect.x // cell_w + self.rect.w // cell_w] == '#' or \
+                level[self.rect.y // cell_w + 1][self.rect.x // cell_w + self.rect.w // cell_w] == '#':
             self.max_x = self.rect.x
         else:
             self.max_x = width - player_w
 
-        if level[self.rect.y // 100][self.rect.x // 50] == '#':
+        if level[self.rect.y // cell_h][self.rect.x // cell_w] == '#' or \
+                level[self.rect.y // cell_h + 1][self.rect.x // cell_w] == '#':
             self.min_x = self.rect.x
+            self.rect.x += 1
         else:
             self.min_x = 0
 
-        if level[player.rect.y // 100][round(player.rect.x * 2 / 100)] == '#':
-            self.min_y = player.rect.y - 100
+        # if level[player.rect.y // 100][round(player.rect.x * 2 / 100)] == '#':
+        #     self.min_y = player.rect.y - 100
 
 
 if __name__ == '__main__':
@@ -360,7 +363,7 @@ if __name__ == '__main__':
     size = width, height = 1000, 800
     player_h = cell_h * 2
     player_w = cell_w
-    gravity = 0.16
+    gravity = 0.1
     horizontal_borders = pygame.sprite.Group()
     vertical_borders = pygame.sprite.Group()
 
@@ -382,19 +385,13 @@ if __name__ == '__main__':
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
     mini_map = SpriteGroup()
-
-    #level_map = load_level('level 1.txt')
     walls = []
     level_map = load_level('map.map')
 
     player, max_x, max_y, level = generate_level(level_map)
-    print(level)
-    #player = Player(5, 5, player_img)
-    #dragon = AnimatedSprite(load_image("dragon_sheet8x2.png"), 8, 2, 50, 50)
     gun = Gun(7, 8, gun_img)
     enemy = Enemy(7, 7, enemy_img)
     min_map = MiniMap(18, 0)
-    #bullet = Bullet(bul_img)
 
     running = True
     while running:
