@@ -271,6 +271,7 @@ class Player(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.plat = False
         self.min_y = height - player_h
+        self.max_y = 0
         self.max_x = width - player_w
         self.min_x = 0
 
@@ -325,6 +326,7 @@ class Player(pygame.sprite.Sprite):
 
     def collide(self):
         global gravity
+        #objects = ['#', ]
         if level[self.rect.y // 100 + 1][round(self.rect.x * 2 / 100)] == '#':
             self.min_y = (self.rect.y // 100) * 100
             gravity = 0
@@ -338,12 +340,13 @@ class Player(pygame.sprite.Sprite):
         else:
             self.max_y = 0
 
-        if level[player.rect.y // 100][round((player.rect.x + 30) / 50)] == '#':
+        if level[self.rect.y // 100][self.rect.x // 50 + 1] == '#':
+            print(self.rect.x)
             self.max_x = self.rect.x
         else:
             self.max_x = width - player_w
 
-        if level[self.rect.y // 100][round((self.rect.x - 30) / 50)] == '#':
+        if level[self.rect.y // 100][self.rect.x // 50] == '#':
             self.min_x = self.rect.x
         else:
             self.min_x = 0
