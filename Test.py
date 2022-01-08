@@ -96,9 +96,9 @@ class Camera(Sprite):
 
     # сдвинуть объект obj на смещение камеры
     def apply(self, obj, vx):
-        if self.count % 10 == 0:
-            obj.rect.x = obj.rect.x - vx
-            print(level[3])
+        #if self.count % 3 == 0:
+        obj.rect.x = obj.rect.x - vx
+        print(level[3])
 
     # позиционировать камеру на объекте target
     def update(self, target):
@@ -289,55 +289,60 @@ class Player(pygame.sprite.Sprite):
         self.rect.y += self.speed_y
         if self.rect.x >= self.max_x:
             self.rect.x = self.max_x
-        elif self.rect.x <= self.min_x:
+        if self.rect.x <= self.min_x:
             self.rect.x = self.min_x
 
         if self.rect.y >= self.min_y:
             self.rect.y = self.min_y
         if self.rect.y <= self.max_y:
             self.rect.y = self.max_y
+        self.min_y = height - player_h
+        self.min_x = 0
+        self.max_y = 0
+        self.max_x = width - player_w
 
     def collide(self):
-        global gravity
-        if level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + 5) // cell_w] == '#' or \
-                level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + cell_w - 5) // cell_w] == '#':
-            self.min_y = (self.rect.y // cell_h) * cell_h
-            self.plat = True
-        else:
-            self.min_y = height - player_h
+        triggered = pygame.sprite.spritecollide(self, all_sprites, False)
+        for i in triggered:
+            if i.name == 'empty':
+                triggered.remove(i)
+        collision_tolerance = 10
+        for wall in triggered:
+            if wall.name != 'empty':
+                if abs(wall.rect.top - self.rect.bottom) < collision_tolerance:
+                    self.min_y = wall.rect.top - player_h + 1
 
-        if level[self.rect.y // cell_h][(self.rect.x + 5) // cell_w] == '#' or \
-                level[self.rect.y // cell_h][(self.rect.x + cell_w - 5) // cell_w] == '#':
-            self.max_y = self.rect.y // cell_h * cell_h
-            self.speed_y = 0
-            self.rect.y = self.max_y + cell_h
-        else:
-            self.max_y = 0
+                if abs(wall.rect.bottom - self.rect.top) < collision_tolerance:
+                    self.max_y = wall.rect.bottom
 
-        if level[self.rect.y // cell_w][self.rect.x // cell_w + self.rect.w // cell_w] == '#' or \
-                level[self.rect.y // cell_w + 1][self.rect.x // cell_w + self.rect.w // cell_w] == '#':
-            self.max_x = self.rect.x
-            #print(self.rect.x // cell_w + self.rect.w // cell_w)
-        else:
-            self.max_x = width - player_w
+                if abs(wall.rect.right - self.rect.left) < collision_tolerance:
+                    self.min_x = wall.rect.right
 
-        if level[self.rect.y // cell_h][self.rect.x // cell_w] == '#' or \
-                level[self.rect.y // cell_h + 1][self.rect.x // cell_w] == '#':
-            self.min_x = self.rect.x
-            self.rect.x += 1
-        else:
-            self.min_x = 0
+                if abs(wall.rect.left - self.rect.right) < collision_tolerance:
+                    self.max_x = wall.rect.left
+                    print(self.max_x)
+
+                #if block.rect.left > self.rect.right:
+                #   self.min_x = block.rect.left + 1
+
+                #if block.rect.top < self.rect.bottom:
+                #    print(self.rect.bottom, block.rect.top)
+                #    self.min_y = block.rect.top - player_h + 1
+
+                #elif block.rect.bottom > self.rect.top:
+                #    self.max_y = self.rect.top
+                #    print('here')
 
         if (self.rect.x // cell_w + self.rect.w // cell_w) + 3 == 20 and \
                 self.speed_x > 0:
             for obj in all_sprites:
-                camera.apply(obj, self.rect.w)
+                camera.apply(obj, self.speed_x)
                 self.max_x = self.rect.x
 
         if (self.rect.x // cell_w + self.rect.w // cell_w) - 3 == 0 and \
                 self.speed_x < 0:
             for obj in all_sprites:
-                camera.apply(obj, -self.rect.w)
+                camera.apply(obj, self.speed_x)
                 self.min_x = self.rect.x
 
 
