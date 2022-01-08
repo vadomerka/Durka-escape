@@ -6,10 +6,13 @@ import pygame
 
 cell_h = cell_w = 50
 size = width, height = 1000, 800
+level_width, level_height = width, height
 player_h = cell_h * 2
 player_w = cell_w
 gravity = 0.1
 creature_group = pygame.sprite.Group()
+walls_group = pygame.sprite.Group()
+cells_group = pygame.sprite.Group()
 
 
 def terminate():
@@ -35,13 +38,15 @@ def load_image(name, colorkey=None):
 
 
 def load_level(filename):
+    global level_height, level_width
     filename = "data/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
 
     max_width = max(map(len, level_map))
-    # print(list(map(lambda x: list(x.ljust(max_width, '.')), level_map)))
+    level_height = len(level_map) * cell_w
+    level_width = len(level_map[-1]) * cell_h
     return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
 
 
@@ -50,14 +55,11 @@ def generate_level(lev):
     for y in range(len(lev)):
         for x in range(len(lev[y])):
             if lev[y][x] == '.':
-                wall = Wall('empty', x, y)
-                walls.append(wall)
+                Cell('empty', x, y)
             if lev[y][x] == '#':
-                wall = Wall('wall', x, y)
-                walls.append(wall)
+                Wall('wall', x, y)
             elif lev[y][x] == '@':
-                wall = Wall('empty', x, y)
-                walls.append(wall)
+                Cell('empty', x, y)
                 new_player = x, y
                 lev[y][x] = "."
     new_player = Player(new_player[0], new_player[1], player_img)
@@ -89,7 +91,7 @@ class Sprite(pygame.sprite.Sprite):
         pass
 
 
-class Camera:
+"""class Camera:
     # зададим начальный сдвиг камеры
     def __init__(self):
         self.dx = 0
@@ -104,7 +106,7 @@ class Camera:
     def update(self, target):
         self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
         self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
-
+"""
 
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, sheet, columns, rows, x, y):
@@ -156,7 +158,7 @@ class Gun(Sprite):
         self.equipped = False
 
     def update(self):
-        self.collide()
+        # self.collide()
         if self.rect.y == self.min_y:
             self.plat = True
             self.speed_y -= gravity
@@ -239,9 +241,17 @@ class Bullet(pygame.sprite.Sprite):
         pass
 
 
-class Wall(Sprite):
+class Cell(pygame.sprite.Sprite):
+    def __init__(self, cell_image, pos_x, pos_y):
+        super().__init__(cells_group, all_sprites)
+        self.image = pygame.transform.scale(tile_images[cell_image], (cell_w, cell_h))
+        self.rect = self.image.get_rect().move(
+            cell_w * pos_x, cell_h * pos_y)
+
+
+class Wall(pygame.sprite.Sprite):
     def __init__(self, img, pos_x, pos_y):
-        super().__init__(all_sprites)
+        super().__init__(cells_group, all_sprites, walls_group)
         self.name = img
         img = tile_images[img]
         self.image = pygame.transform.scale(img, (cell_w, cell_h))
@@ -254,8 +264,33 @@ class Wall(Sprite):
         self.direction = 0
 
     def update(self):
-        if pygame.sprite.collide_mask(self, player):
-            pass
+        if pygame.sprite.spritecollideany(self, creature_group):
+            for obj in creature_group:
+                if self.rect.colliderect(obj.rect):
+                    self.collide(obj)
+
+    def collide(self, obj):
+        # obj down
+        collision_tolerance = 5
+        if abs(obj.rect.bottom - self.rect.top) <= collision_tolerance:
+            obj.min_y = self.rect.top - obj.rect.h + 1
+        else:
+            obj.min_y = level_height - obj.rect.h
+
+        if abs(obj.rect.top - self.rect.bottom) <= collision_tolerance:
+            obj.max_y = self.rect.bottom + 1
+            obj.speed_y = 0
+        else:
+            obj.max_y = 0
+
+        if abs(obj.rect.right - self.rect.left) <= collision_tolerance:
+            obj.max_x = self.rect.left - obj.rect.w + 1
+            # obj.rect.x = self.rect.x - obj.rect.w
+
+        if abs(obj.rect.left - self.rect.right) <= collision_tolerance:
+            obj.min_x = self.rect.right - 1
+        else:
+            obj.min_x = 0
 
 
 class Creature(pygame.sprite.Sprite):
@@ -272,9 +307,9 @@ class Creature(pygame.sprite.Sprite):
         self.pos = (pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
         self.plat = False
-        self.min_y = height - self.rect.height
+        self.min_y = level_height - self.rect.height
         self.max_y = 0
-        self.max_x = width - self.rect.width
+        self.max_x = level_width - self.rect.width
         self.min_x = 0
 
     def movement(self, line, direction="up"):
@@ -307,7 +342,15 @@ class Creature(pygame.sprite.Sprite):
     def update(self):
         if self.health <= 0:
             self.kill()
-        self.collide()
+
+        if not pygame.sprite.spritecollideany(self, walls_group):
+            self.min_y = level_height - self.rect.h
+            self.max_y = 0
+            self.min_x = 0
+            self.max_x = level_width - self.rect.w
+
+        print(self.min_y, self.max_y, self.min_x, self.max_x)
+
         if self.rect.y == self.min_y:
             self.plat = True
             self.speed_y -= gravity
@@ -325,38 +368,6 @@ class Creature(pygame.sprite.Sprite):
             self.rect.y = self.min_y
         if self.rect.y <= self.max_y:
             self.rect.y = self.max_y
-
-    def collide(self):
-        global gravity
-        if level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + self.move_speed) // cell_w] == '#' or \
-                level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + cell_w - self.move_speed) // cell_w] == '#':
-            self.min_y = (self.rect.y // cell_h) * cell_h
-        else:
-            self.min_y = height - self.rect.height
-
-        if level[self.rect.y // cell_h][(self.rect.x + self.move_speed) // cell_w] == '#' or \
-                level[self.rect.y // cell_h][(self.rect.x + cell_w - self.move_speed) // cell_w] == '#':
-            self.max_y = self.rect.y // cell_h * cell_h
-            self.speed_y = 0
-            self.rect.y = self.max_y + cell_h
-        else:
-            self.max_y = 0
-
-        if level[self.rect.y // cell_w][self.rect.x // cell_w + self.rect.w // cell_w] == '#' or \
-                level[self.rect.y // cell_w + 1][self.rect.x // cell_w + self.rect.w // cell_w] == '#':
-            self.max_x = self.rect.x
-        else:
-            self.max_x = width - player_w
-
-        if level[self.rect.y // cell_h][self.rect.x // cell_w] == '#' or \
-                level[self.rect.y // cell_h + 1][self.rect.x // cell_w] == '#':
-            self.min_x = self.rect.x
-            self.rect.x += 1
-        else:
-            self.min_x = 0
-
-        # if level[player.rect.y // 100][round(player.rect.x * 2 / 100)] == '#':
-        #     self.min_y = player.rect.y - 100
 
 
 class Enemy(Creature):
@@ -436,6 +447,8 @@ if __name__ == '__main__':
     gun = Gun(7, 10, gun_img)
     enemy = Enemy(4, 7, enemy_img)
 
+    # camera = Camera()
+
     running = True
     while running:
         screen.fill((0, 0, 0))
@@ -450,7 +463,7 @@ if __name__ == '__main__':
             player.movement("y", "down")
         # if keys[pygame.K_SPACE]:
             # print(player.rect.y // 100 + 1, round(player.rect.x * 2 / 100 print()+ 1))
-        if not (keys[pygame.K_a] or keys[pygame.K_d]):  # если юзер не двигается по х, тогда стоп
+        if not (keys[pygame.K_a] or keys[pygame.K_d]):  # если юзер не  двигается по х, тогда стоп
             player.movement("x", "stop")
         mouse_pressed = pygame.mouse.get_pressed()
         if mouse_pressed[0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
@@ -461,6 +474,11 @@ if __name__ == '__main__':
                 terminate()
             elif event.type == pygame.KEYDOWN:
                 pass
+
+        # camera.update(player)
+        # # обновляем положение всех спрайтов
+        # for sprite in all_sprites:
+        #     camera.apply(sprite)
 
         all_sprites.draw(screen)
         player_group.draw(screen)
