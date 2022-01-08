@@ -5,7 +5,7 @@ import pygame
 
 
 cell_h = cell_w = 50
-size = width, height = 1000, 800
+size = width, height = 1000, 1500
 player_h = cell_h * 2
 player_w = cell_w
 gravity = 0.1
@@ -36,7 +36,7 @@ def load_image(name, colorkey=None):
 
 
 def load_level(filename):
-    filename = "data/" + filename
+    filename = "data/levels/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
@@ -61,7 +61,7 @@ def generate_level(level):
                 walls.append(wall)
                 new_player = Player(x, y, player_img)
                 level[y][x] = "."
-        print(level[y])
+        #print(level[y])
     #print(walls)
     return new_player, x, y, level
 
@@ -86,21 +86,26 @@ class Sprite(pygame.sprite.Sprite):
         pass
 
 
-class Camera:
+class Camera(Sprite):
     # зададим начальный сдвиг камеры
     def __init__(self):
-        self.dx = 0
+        super().__init__(camera_group)
+        self.dx = 250
         self.dy = 0
+        self.count = 0
 
     # сдвинуть объект obj на смещение камеры
-    def apply(self, obj):
-        obj.rect.x += self.dx
-        obj.rect.y += self.dy
+    def apply(self, obj, vx):
+        if self.count % 10 == 0:
+            obj.rect.x = obj.rect.x - vx
+            print(level[3])
 
     # позиционировать камеру на объекте target
     def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
-        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
+        self.count += 1
+        #print(self.count)
+        #self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
+        #self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -130,14 +135,6 @@ class AnimatedSprite(pygame.sprite.Sprite):
             self.cur_frame = (self.cur_frame + 1) % len(self.frames)
             self.image = self.frames[self.cur_frame]
         self.count += 1
-
-
-class MiniMap(Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(mini_map)
-        self.image = pygame.transform.scale(load_image('creature.png'), (player_w * 2, player_h))
-        self.rect = self.image.get_rect().move(
-            cell_w * pos_x, cell_h * pos_y)
 
 
 class Gun(Sprite):
@@ -231,32 +228,12 @@ class Wall(Sprite):
     def __init__(self, img, pos_x, pos_y):
         super().__init__(all_sprites)
         self.name = img
-        img = tile_images[img]
-        self.image = pygame.transform.scale(img, (cell_w, cell_h))
+        self.image = pygame.transform.scale(tile_images[img], (cell_w, cell_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
-        self.speed_x = 0
-        self.speed_y = 0
-        self.pos = (pos_x, pos_y)
+        self.abs_pos = (self.rect.x, self.rect.y)
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = 0
-
-    def update(self):
-        if pygame.sprite.collide_mask(self, player):
-            pass
-            # if player.rect.y > self.rect.y - 100:
-            #     player.rect.y = self.rect.y - 100
-            #     player.speed_y = 0
-            #     player.plat = True
-            # else:
-            #     player.plat = False
-            # if player.rect.y <= self.rect.y - 100 and player.rect.x == self.rect.x:
-            #     player.speed_x = 0
-        # else:
-        #     player.plat = False
-
-            # terminate()
-            # self.kill()
 
 
 class Player(pygame.sprite.Sprite):
@@ -279,10 +256,8 @@ class Player(pygame.sprite.Sprite):
         if line == "x":
             if direction == "right":
                 vx = 5
-                self.direction = 1
             elif direction == "left":
                 vx = -5
-                self.direction = 0
             elif direction == "stop":
                 vx = 0
             else:
@@ -301,8 +276,6 @@ class Player(pygame.sprite.Sprite):
                 vy = 0
                 print("wrong direction", line)
             self.speed_y = vy
-        if line == "stop":
-            pass
 
     def update(self):
         self.collide()
@@ -316,7 +289,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.y += self.speed_y
         if self.rect.x >= self.max_x:
             self.rect.x = self.max_x
-        if self.rect.x <= self.min_x:
+        elif self.rect.x <= self.min_x:
             self.rect.x = self.min_x
 
         if self.rect.y >= self.min_y:
@@ -344,6 +317,7 @@ class Player(pygame.sprite.Sprite):
         if level[self.rect.y // cell_w][self.rect.x // cell_w + self.rect.w // cell_w] == '#' or \
                 level[self.rect.y // cell_w + 1][self.rect.x // cell_w + self.rect.w // cell_w] == '#':
             self.max_x = self.rect.x
+            #print(self.rect.x // cell_w + self.rect.w // cell_w)
         else:
             self.max_x = width - player_w
 
@@ -354,8 +328,17 @@ class Player(pygame.sprite.Sprite):
         else:
             self.min_x = 0
 
-        # if level[player.rect.y // 100][round(player.rect.x * 2 / 100)] == '#':
-        #     self.min_y = player.rect.y - 100
+        if (self.rect.x // cell_w + self.rect.w // cell_w) + 3 == 20 and \
+                self.speed_x > 0:
+            for obj in all_sprites:
+                camera.apply(obj, self.rect.w)
+                self.max_x = self.rect.x
+
+        if (self.rect.x // cell_w + self.rect.w // cell_w) - 3 == 0 and \
+                self.speed_x < 0:
+            for obj in all_sprites:
+                camera.apply(obj, -self.rect.w)
+                self.min_x = self.rect.x
 
 
 if __name__ == '__main__':
@@ -384,14 +367,14 @@ if __name__ == '__main__':
 
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
-    mini_map = SpriteGroup()
+    camera_group = SpriteGroup()
     walls = []
     level_map = load_level('map.map')
 
     player, max_x, max_y, level = generate_level(level_map)
     gun = Gun(7, 8, gun_img)
     enemy = Enemy(7, 7, enemy_img)
-    min_map = MiniMap(18, 0)
+    camera = Camera()
 
     running = True
     while running:
@@ -425,9 +408,8 @@ if __name__ == '__main__':
         last_event = keys
         all_sprites.draw(screen)
         player_group.draw(screen)
-        mini_map.draw(screen)
+        camera_group.update(player)
         all_sprites.update()
         player_group.update()
-        mini_map.update()
         clock.tick(fps)
         pygame.display.flip()
