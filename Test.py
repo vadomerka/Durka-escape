@@ -305,6 +305,8 @@ class Wall(pygame.sprite.Sprite):
         if abs(obj.rect.right - self.rect.left) <= collision_tolerance:
             obj.max_x = self.rect.left - obj.rect.w + 1
             # obj.rect.x = self.rect.x - obj.rect.w
+        else:
+            obj.max_x = level_width - obj.rect.w
 
         if abs(obj.rect.left - self.rect.right) <= collision_tolerance:
             obj.min_x = self.rect.right - 1
