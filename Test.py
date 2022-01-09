@@ -5,7 +5,7 @@ import pygame
 
 
 cell_h = cell_w = 50
-size = width, height = 1000, 1500
+size = width, height = 1000, 800
 level_width, level_height = width, height
 player_h = cell_h * 2
 player_w = cell_w
@@ -52,24 +52,26 @@ def load_level(filename):
     return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
 
 
-def generate_level(level):
+def generate_level(lev):
     new_player, x, y = None, None, None
-    for y in range(len(level)):
-        for x in range(len(level[y])):
-            if level[y][x] == '.':
-                wall = Wall('empty', x, y)
-                walls.append(wall)
-            if level[y][x] == '#':
+    for y in range(len(lev)):
+        for x in range(len(lev[y])):
+            if lev[y][x] == '.':
+                wall = Cell('empty', x, y)
+            if lev[y][x] == '#':
                 wall = Wall('wall', x, y)
                 walls.append(wall)
-            elif level[y][x] == '@':
-                wall = Wall('empty', x, y)
-                walls.append(wall)
-                new_player = Player(x, y, player_img)
-                level[y][x] = "."
-        #print(level[y])
-    #print(walls)
-    return new_player, x, y, level
+            elif lev[y][x] == '@':
+                wall = Cell('empty', x, y)
+                new_player = x, y
+                lev[y][x] = "."
+    new_player = Player(new_player[0], new_player[1], player_img)
+    return new_player, lev
+
+
+def draw_interface():
+    for hp in range(0, player.health, 5):
+        screen.blit(heart_image, (hp * 5, 0))
 
 
 class SpriteGroup(pygame.sprite.Group):
@@ -77,9 +79,9 @@ class SpriteGroup(pygame.sprite.Group):
     def __init__(self):
         super().__init__()
 
-    def get_event(self, event):
+    def get_event(self, ev):
         for sprite in self:
-            sprite.get_event(event)
+            sprite.get_event(ev)
 
 
 class Sprite(pygame.sprite.Sprite):
@@ -88,28 +90,26 @@ class Sprite(pygame.sprite.Sprite):
         super().__init__(group)
         self.rect = None
 
-    def get_event(self, event):
+    def get_event(self, ev):
         pass
 
 
-class Camera(Sprite):
+"""class Camera:
     # зададим начальный сдвиг камеры
     def __init__(self):
-        super().__init__(camera_group)
-        self.dx = 250
+        self.dx = 0
         self.dy = 0
-        self.count = 0
 
     # сдвинуть объект obj на смещение камеры
-    def apply(self, obj, vx):
-        obj.rect.x = obj.rect.x - vx
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
 
     # позиционировать камеру на объекте target
     def update(self, target):
-        self.count += 1
-        #print(self.count)
-        #self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
-        #self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
+        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
+        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
+"""
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -133,8 +133,6 @@ class AnimatedSprite(pygame.sprite.Sprite):
                     frame_location, self.rect.size)))
 
     def update(self):
-        #self.pos =
-        #self.rect.x, self.rect.y = player.rect.x, player.rect.y
         if self.count % 5 == 0:
             self.cur_frame = (self.cur_frame + 1) % len(self.frames)
             self.image = self.frames[self.cur_frame]
@@ -164,6 +162,7 @@ class Gun(Sprite):
         self.equipped = False
 
     def update(self):
+        # self.collide()
         if self.rect.y == self.min_y:
             self.plat = True
             self.speed_y -= gravity
@@ -219,45 +218,6 @@ class Bullet(pygame.sprite.Sprite):
     def __init__(self, img):
         super().__init__(all_sprites)
         pass
-
-
-class Enemy(Sprite):
-    def __init__(self, pos_x, pos_y, img):
-        super().__init__(player_group)
-        self.image = pygame.transform.scale(img, (player_w, player_h))
-        self.rect = self.image.get_rect().move(
-            cell_w * pos_x, cell_h * pos_y)
-        self.speed_x = 0
-        self.speed_y = 0
-        self.pos = (pos_x, pos_y)
-        self.mask = pygame.mask.from_surface(self.image)
-
-    def movement(self, line, direction="up"):
-        if line == "x":
-            if direction == "right":
-                vx = 2
-            else:
-                vx = -2
-            self.speed_x = vx
-        if line == "stop":
-            pass
-
-    def update(self):
-        if pygame.sprite.collide_mask(self, player):
-            self.speed_x = 0
-            #terminate()
-            self.kill()
-        self.speed_y += gravity
-        self.rect.x += self.speed_x
-        self.rect.y += self.speed_y
-        if self.rect.x >= (width - player_w):
-            self.speed_x = -self.speed_x
-        elif self.rect.x <= 0:
-            self.speed_x = -self.speed_x
-        if self.rect.y >= (height - player_h):
-            self.rect.y = (height - player_h)
-        elif self.rect.y <= 0:
-            self.rect.y = 0
 
 
 class Cell(pygame.sprite.Sprite):
@@ -370,7 +330,7 @@ class Creature(pygame.sprite.Sprite):
             self.min_x = 0
             self.max_x = level_width - self.rect.w
 
-        print(self.min_y, self.max_y, self.min_x, self.max_x)
+        # print(self.min_y, self.max_y, self.min_x, self.max_x)
 
         if self.rect.y == self.min_y:
             self.plat = True
@@ -453,6 +413,7 @@ if __name__ == '__main__':
     gun_img = load_image('spoon.png')
     bul_img = load_image('hit.png')
     wall_img = load_image('box.png')
+    heart_image = load_image("small_heart.png")
     tile_images = {
         'wall': load_image('box.png'),
         'empty': load_image('grass.png')
@@ -460,14 +421,13 @@ if __name__ == '__main__':
 
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
-    camera_group = SpriteGroup()
     walls = []
     level_map = load_level('map.map')
 
-    player, max_x, max_y, level = generate_level(level_map)
-    gun = Gun(7, 8, gun_img)
-    enemy = Enemy(7, 7, enemy_img)
-    camera = Camera()
+    player, level = generate_level(level_map)
+    gun = Gun(7, 10, gun_img)
+    enemy = Enemy(4, 7, enemy_img)
+    # camera = Camera()
 
     running = True
     while running:
@@ -494,10 +454,16 @@ if __name__ == '__main__':
                 terminate()
             elif event.type == pygame.KEYDOWN:
                 pass
+
+        # camera.update(player)
+        # # обновляем положение всех спрайтов
+        # for sprite in all_sprites:
+        #     camera.apply(sprite)
+
         all_sprites.draw(screen)
         player_group.draw(screen)
-        camera_group.update(player)
         all_sprites.update()
         player_group.update()
+        draw_interface()
         clock.tick(fps)
         pygame.display.flip()
