@@ -107,15 +107,14 @@ class Camera:
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, sheet, columns, rows, x, y):
-        super().__init__(all_sprites)
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, group):
+        super().__init__(group)
         self.frames = []
         self.cut_sheet(sheet, columns, rows)
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
-        self.rect = self.rect.move(x, y)
+        self.rect = self.rect.move(pos_x, pos_y)
         self.count = 0
-        self.pos = (500, 500)
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -133,9 +132,10 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.count += 1
 
 
-class Gun(Sprite):
+class Gun(AnimatedSprite):
     def __init__(self, pos_x, pos_y, img):
-        super().__init__(player_group)
+        global player_group
+        super().__init__(load_image("spoon_ainm.png"), 4, 2, pos_x, pos_y, player_group)
         self.type = "spoon"
         self.damage = 5
         self.attack_speed = 1
@@ -148,6 +148,7 @@ class Gun(Sprite):
         self.pos = (pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
         self.plat = False
+        self.near_player = False
         self.min_y = height - self.rect.h
         self.max_y = 0
         self.max_x = width - self.rect.w
@@ -178,27 +179,31 @@ class Gun(Sprite):
             self.rect.y = self.max_y
 
         if pygame.sprite.collide_mask(self, player):
-            last_stats = [0, 0]
-            intro_text = ["Wanna grab a " + self.type + " ?",
-                          "             old stats: damage, " + str(last_stats[0]) + " speed, " + str(last_stats[1]),
-                          "             new stats: damage, " + str(self.damage) + " speed, " + str(self.attack_speed)]
+            self.draw_stats()
+            # self.equip()
+            self.near_player = True
+        else:
+            self.near_player = False
 
-            fon = pygame.transform.scale(gun_img, (width * 0.8, height * 0.8))
-            screen.blit(fon, (width * 0.1, height * 0.1))
-            font = pygame.font.Font(None, 30)
-            text_coord = 50
-            for line in intro_text:
-                string_rendered = font.render(line, 1, pygame.Color('white'))
-                intro_rect = string_rendered.get_rect()
-                text_coord += 10
-                intro_rect.top = text_coord
-                intro_rect.x = 10
-                text_coord += intro_rect.height
-                screen.blit(string_rendered, intro_rect)
-            for i in range(10**3):
-                pygame.display.flip()
+    def draw_stats(self):
+        last_stats = [0, 0]
+        intro_text = ["Wanna grab a " + self.type + " ?",
+                      "             old stats: damage, " + str(last_stats[0]) + " speed, " + str(last_stats[1]),
+                      "             new stats: damage, " + str(self.damage) + " speed, " + str(self.attack_speed)]
 
-            self.equip()
+        fon = pygame.transform.scale(gun_img, (width * 0.8, height * 0.8))
+        screen.blit(fon, (width * 0.1, height * 0.1))
+        font = pygame.font.Font(None, 30)
+        text_coord = 50
+        for line in intro_text:
+            string_rendered = font.render(line, 1, pygame.Color('white'))
+            intro_rect = string_rendered.get_rect()
+            text_coord += 10
+            intro_rect.top = text_coord
+            intro_rect.x = 10
+            text_coord += intro_rect.height
+            screen.blit(string_rendered, intro_rect)
+        # pygame.display.flip()
 
     def equip(self):
         player.weapon = self
@@ -452,14 +457,21 @@ if __name__ == '__main__':
             # print(player.rect.y // 100 + 1, round(player.rect.x * 2 / 100 print()+ 1))
         if not (keys[pygame.K_a] or keys[pygame.K_d]):  # если юзер не двигается по х, тогда стоп
             player.movement("x", "stop")
+
         mouse_pressed = pygame.mouse.get_pressed()
         if mouse_pressed[0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
             player.attack()
-        last_event = keys
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_e:
+                    if pygame.sprite.spritecollideany(player, player_group):
+                        # берем все предметы, и оставляем только те, с которыми коллайдится игрок
+                        equipable_entities = list(filter(
+                            lambda obj: pygame.sprite.collide_mask(player, obj), list(player_group)))
+                        equipable_entities[-1].equip()
                 pass
 
         all_sprites.draw(screen)
