@@ -151,7 +151,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
 
 class Gun(Sprite):
     def __init__(self, pos_x, pos_y, img):
-        super().__init__(player_group)
+        super().__init__(gun_group)
         self.image = pygame.transform.scale(img, (player_w, player_h // 2))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
@@ -248,7 +248,7 @@ class Wall(Sprite):
             pass
 
 
-class Player(pygame.sprite.Sprite):
+class Player(Sprite):
     def __init__(self, pos_x, pos_y, img):
         super().__init__(player_group)
         self.image = pygame.transform.scale(img, (player_w, player_h))
@@ -368,6 +368,7 @@ if __name__ == '__main__':
 
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
+    gun_group = SpriteGroup()
     levels = [load_level('level 1'), load_level('level 2'), load_level('level 2')]
 
     player, max_x, max_y, level = generate_level(levels[0])
@@ -406,7 +407,9 @@ if __name__ == '__main__':
         last_event = keys
         all_sprites.draw(screen)
         player_group.draw(screen)
+        gun_group.draw(screen)
         all_sprites.update()
         player_group.update()
+        gun_group.update()
         clock.tick(fps)
         pygame.display.flip()
