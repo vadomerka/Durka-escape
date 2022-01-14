@@ -35,7 +35,7 @@ def load_image(name, colorkey=None):
 
 
 def load_level(filename):
-    filename = "data/" + filename
+    filename = "data/levels/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
@@ -47,7 +47,9 @@ def load_level(filename):
 
 def generate_level(lev):
     new_player, x, y = None, None, None
+    obj = []
     for y in range(len(lev)):
+        # print(lev[y])
         for x in range(len(lev[y])):
             if lev[y][x] == '.':
                 wall = Wall('empty', x, y)
@@ -55,11 +57,24 @@ def generate_level(lev):
             if lev[y][x] == '#':
                 wall = Wall('wall', x, y)
                 walls.append(wall)
-            elif lev[y][x] == '@':
+            if lev[y][x] == '@':
                 wall = Wall('empty', x, y)
                 walls.append(wall)
                 new_player = x, y
                 lev[y][x] = "."
+            if lev[y][x] == 'X':
+                wall = Wall('empty', x, y)
+                walls.append(wall)
+                obj.append((Enemy, x, y, enemy_img))
+            if lev[y][x] == 'W':
+                wall = Wall('empty', x, y)
+                walls.append(wall)
+                obj.append((Gun, x, y, gun_img))
+                lev[y][x] = "."
+            if lev[y][x] == 'D':
+                print("d")
+    for clas, x, y, img in obj:
+        clas(x, y, img)
     new_player = Player(new_player[0], new_player[1], player_img)
     return new_player, lev
 
@@ -210,25 +225,49 @@ class Gun(AnimatedSprite):
         player_group.remove(self)
 
     def collide(self):
-        global gravity
-        if level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + self.move_speed) // cell_w] == '#':
+        row1 = self.rect.y // cell_h + self.rect.h // cell_h
+        row2 = self.rect.y // cell_h + self.rect.h // cell_h
+        col1 = (self.rect.x + self.move_speed) // cell_w
+        col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                level[row1][col1] == '#' or \
+                level[row2][col2] == '#':
             self.min_y = (self.rect.y // cell_h) * cell_h
         else:
             self.min_y = height - self.rect.height
-
-        if level[self.rect.y // cell_h][(self.rect.x + self.move_speed) // cell_w] == '#':
+        row1 = self.rect.y // cell_h
+        col1 = (self.rect.x + self.move_speed) // cell_w
+        row2 = self.rect.y // cell_h
+        col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                level[row1][col1] == '#' or \
+                level[row2][col2] == '#':
             self.max_y = self.rect.y // cell_h * cell_h
             self.speed_y = 0
             self.rect.y = self.max_y + cell_h
         else:
             self.max_y = 0
-
-        if level[self.rect.y // cell_w][self.rect.x // cell_w + self.rect.w // cell_w] == '#':
+        row1 = self.rect.y // cell_w
+        col1 = self.rect.x // cell_w + self.rect.w // cell_w
+        row2 = self.rect.y // cell_w + 1
+        col2 = self.rect.x // cell_w + self.rect.w // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                level[row1][col1] == '#' or \
+                level[row2][col2] == '#':
             self.max_x = self.rect.x
         else:
             self.max_x = width - player_w
-
-        if level[self.rect.y // cell_h][self.rect.x // cell_w] == '#':
+        row1 = self.rect.y // cell_h
+        col1 = self.rect.x // cell_w
+        row2 = self.rect.y // cell_h + 1
+        col2 = self.rect.x // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                level[row1][col1] == '#' or \
+                level[row2][col2] == '#':
             self.min_x = self.rect.x
             self.rect.x += 1
         else:
@@ -310,17 +349,24 @@ class Creature(pygame.sprite.Sprite):
             pass
 
     def update(self):
+        # умирание
         if self.health <= 0:
             self.kill()
+
+        # коллайд со стенами
         self.collide()
+        # елси на платформе
         if self.rect.y == self.min_y:
             self.plat = True
             self.speed_y -= gravity
         else:
             self.plat = False
+
         self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
+
+        # функция стен (!ее нельзя переносить относительно других штук в этой функции!)
         if self.rect.x >= self.max_x:
             self.rect.x = self.max_x
         if self.rect.x <= self.min_x:
@@ -332,36 +378,53 @@ class Creature(pygame.sprite.Sprite):
             self.rect.y = self.max_y
 
     def collide(self):
-        global gravity
-        if level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + self.move_speed) // cell_w] == '#' or \
-                level[self.rect.y // cell_h + self.rect.h // cell_h][(self.rect.x + cell_w - self.move_speed) // cell_w] == '#':
+        row1 = self.rect.y // cell_h + self.rect.h // cell_h
+        row2 = self.rect.y // cell_h + self.rect.h // cell_h
+        col1 = (self.rect.x + self.move_speed) // cell_w
+        col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                level[row1][col1] == '#' or \
+                level[row2][col2] == '#':
             self.min_y = (self.rect.y // cell_h) * cell_h
         else:
             self.min_y = height - self.rect.height
-
-        if level[self.rect.y // cell_h][(self.rect.x + self.move_speed) // cell_w] == '#' or \
-                level[self.rect.y // cell_h][(self.rect.x + cell_w - self.move_speed) // cell_w] == '#':
+        row1 = self.rect.y // cell_h
+        col1 = (self.rect.x + self.move_speed) // cell_w
+        row2 = self.rect.y // cell_h
+        col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                level[row1][col1] == '#' or \
+                level[row2][col2] == '#':
             self.max_y = self.rect.y // cell_h * cell_h
             self.speed_y = 0
             self.rect.y = self.max_y + cell_h
         else:
             self.max_y = 0
-
-        if level[self.rect.y // cell_w][self.rect.x // cell_w + self.rect.w // cell_w] == '#' or \
-                level[self.rect.y // cell_w + 1][self.rect.x // cell_w + self.rect.w // cell_w] == '#':
+        row1 = self.rect.y // cell_w
+        col1 = self.rect.x // cell_w + self.rect.w // cell_w
+        row2 = self.rect.y // cell_w + 1
+        col2 = self.rect.x // cell_w + self.rect.w // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                level[row1][col1] == '#' or \
+                level[row2][col2] == '#':
             self.max_x = self.rect.x
         else:
             self.max_x = width - player_w
-
-        if level[self.rect.y // cell_h][self.rect.x // cell_w] == '#' or \
-                level[self.rect.y // cell_h + 1][self.rect.x // cell_w] == '#':
+        row1 = self.rect.y // cell_h
+        col1 = self.rect.x // cell_w
+        row2 = self.rect.y // cell_h + 1
+        col2 = self.rect.x // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                level[row1][col1] == '#' or \
+                level[row2][col2] == '#':
             self.min_x = self.rect.x
             self.rect.x += 1
         else:
             self.min_x = 0
-
-        # if level[player.rect.y // 100][round(player.rect.x * 2 / 100)] == '#':
-        #     self.min_y = player.rect.y - 100
 
 
 class Enemy(Creature):
@@ -413,6 +476,7 @@ if __name__ == '__main__':
     player_h = cell_h * 2
     player_w = cell_w
     gravity = 0.1
+
     horizontal_borders = pygame.sprite.Group()
     vertical_borders = pygame.sprite.Group()
 
@@ -438,8 +502,8 @@ if __name__ == '__main__':
     level_map = load_level('map.map')
 
     player, level = generate_level(level_map)
-    gun = Gun(7, 10, gun_img)
-    enemy = Enemy(4, 7, enemy_img)
+    # gun = Gun(7, 10, gun_img)
+    # enemy = Enemy(4, 7, enemy_img)
 
     running = True
     while running:
