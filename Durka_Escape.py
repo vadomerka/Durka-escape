@@ -10,6 +10,8 @@ player_h = cell_h * 2
 player_w = cell_w
 gravity = 0.1
 creature_group = pygame.sprite.Group()
+doors_group = pygame.sprite.Group()
+only_player_group = pygame.sprite.Group()
 
 
 def terminate():
@@ -38,45 +40,63 @@ def load_level(filename):
     filename = "data/levels/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
-        level_map = [line.strip() for line in mapFile]
+        l_m = [line.strip() for line in mapFile]
 
-    max_width = max(map(len, level_map))
+    max_width = max(map(len, l_m))
     # print(list(map(lambda x: list(x.ljust(max_width, '.')), level_map)))
-    return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
+    return list(map(lambda x: list(x.ljust(max_width, '.')), l_m))
 
 
-def generate_level(lev):
+def generate_level(lev, filename):
+    global player, level_sprites, room_maps
     new_player, x, y = None, None, None
-    obj = []
+    numbers = "1234567890"
+    background, front = [], []
     for y in range(len(lev)):
         # print(lev[y])
         for x in range(len(lev[y])):
             if lev[y][x] == '.':
-                wall = Wall('empty', x, y)
-                walls.append(wall)
-            if lev[y][x] == '#':
-                wall = Wall('wall', x, y)
-                walls.append(wall)
-            if lev[y][x] == '@':
-                wall = Wall('empty', x, y)
-                walls.append(wall)
+                # wall = Wall('empty', x, y)
+                # walls.append(wall)
+                background.append((Wall, "empty", x, y))
+            elif lev[y][x] == '#':
+                # wall = Wall('wall', x, y)
+                # walls.append(wall)
+                background.append((Wall, "wall", x, y))
+            elif lev[y][x] == '@':
+                # wall = Wall('empty', x, y)
+                # walls.append(wall)
+                background.append((Wall, "empty", x, y))
                 new_player = x, y
                 lev[y][x] = "."
-            if lev[y][x] == 'X':
-                wall = Wall('empty', x, y)
-                walls.append(wall)
-                obj.append((Enemy, x, y, enemy_img))
-            if lev[y][x] == 'W':
-                wall = Wall('empty', x, y)
-                walls.append(wall)
-                obj.append((Gun, x, y, gun_img))
+            elif lev[y][x] == 'X':
+                # wall = Wall('empty', x, y)
+                # walls.append(wall)
+                background.append((Wall, "empty", x, y))
+                front.append((Enemy, x, y, enemy_img))
+            elif lev[y][x] == 'W':
+                # wall = Wall('empty', x, y)
+                # walls.append(wall)
+                background.append((Wall, "empty", x, y))
+                front.append((Gun, x, y, gun_img))
                 lev[y][x] = "."
-            if lev[y][x] == 'D':
-                print("d")
-    for clas, x, y, img in obj:
-        clas(x, y, img)
-    new_player = Player(new_player[0], new_player[1], player_img)
-    return new_player, lev
+            elif lev[y][x] in numbers:
+                front.append((Door, x, y, lev[y][x]))
+    room_maps[int(filename[-1])] = lev
+    for i in range(len(background)):
+        clas, x, y, img = background[i]
+        background[i] = clas(x, y, img)
+    for i in range(len(front)):
+        clas, x, y, img = front[i]
+        front[i] = clas(x, y, img)
+        if clas == Door and room_maps[int(img)] == 0:
+            generate_level(load_level("level " + img), "level " + img)
+
+    if new_player is not None:
+        player = Player(new_player[0], new_player[1], player_img)
+    # room_maps[int(filename[-1])] = lev
+    level_sprites[int(filename[-1])] = (background, front)
+    # print(level_sprites)
 
 
 def draw_interface():
@@ -85,7 +105,6 @@ def draw_interface():
 
 
 class SpriteGroup(pygame.sprite.Group):
-
     def __init__(self):
         super().__init__()
 
@@ -102,23 +121,6 @@ class Sprite(pygame.sprite.Sprite):
 
     def get_event(self, ev):
         pass
-
-
-class Camera:
-    # зададим начальный сдвиг камеры
-    def __init__(self):
-        self.dx = 0
-        self.dy = 0
-
-    # сдвинуть объект obj на смещение камеры
-    def apply(self, obj):
-        obj.rect.x += self.dx
-        obj.rect.y += self.dy
-
-    # позиционировать камеру на объекте target
-    def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
-        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -145,6 +147,26 @@ class AnimatedSprite(pygame.sprite.Sprite):
             self.cur_frame = (self.cur_frame + 1) % len(self.frames)
             self.image = self.frames[self.cur_frame]
         self.count += 1
+
+
+class Door(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, num):
+        self.room_num = int(num)
+        img = doors_images[self.room_num]
+        self.image = pygame.transform.scale(img, (cell_w, cell_h * 2))
+        self.rect = self.image.get_rect().move(
+            cell_w * pos_x, cell_h * pos_y)
+        super().__init__(all_sprites, doors_group)
+        self.near_player = False
+
+    def update(self):
+        self.near_player = pygame.sprite.collide_mask(self, player)
+
+    def enter(self):
+        global room_number, player
+        room_number = self.room_num
+        player.rect.x = self.rect.x
+        player.rect.y = self.rect.y
 
 
 class Gun(AnimatedSprite):
@@ -221,8 +243,9 @@ class Gun(AnimatedSprite):
         # pygame.display.flip()
 
     def equip(self):
+        global level_sprites, room_number
         player.weapon = self
-        player_group.remove(self)
+        level_sprites[room_number][1].remove(self)
 
     def collide(self):
         row1 = self.rect.y // cell_h + self.rect.h // cell_h
@@ -495,15 +518,23 @@ if __name__ == '__main__':
         'wall': load_image('box.png'),
         'empty': load_image('grass.png')
     }
+    doors_images = {
+        0: load_image("green_door.png"),
+        1: load_image("door_1.png"),
+        2: load_image("door_2.png"),
+        3: load_image("door_3.png"),
+    }
 
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
     walls = []
-    level_map = load_level('map.map')
-
-    player, level = generate_level(level_map)
-    # gun = Gun(7, 10, gun_img)
-    # enemy = Enemy(4, 7, enemy_img)
+    player = None
+    room_number = 0
+    level_map = load_level('level 0')
+    room_maps = [0] * 9
+    level_sprites = [0] * 9
+    generate_level(level_map, 'level 0')
+    only_player_group.add(player)
 
     running = True
     while running:
@@ -536,12 +567,27 @@ if __name__ == '__main__':
                         equipable_entities = list(filter(
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(player_group)))
                         equipable_entities[-1].equip()
+                    if pygame.sprite.spritecollideany(player, doors_group):
+                        near_doors = list(filter(
+                            lambda obj: pygame.sprite.collide_mask(player, obj), list(doors_group)))
+                        near_doors[-1].enter()
                 pass
 
-        all_sprites.draw(screen)
-        player_group.draw(screen)
+        # all_sprites.draw(screen)
+        # player_group.draw(screen)
+        # all_sprites.update()
+        # player_group.update()
+        level = room_maps[room_number]
+        # print(level_sprites[room_number])
+        all_sprites = pygame.sprite.Group(level_sprites[room_number][0])
         all_sprites.update()
-        player_group.update()
+        all_sprites.draw(screen)
+        all_sprites = pygame.sprite.Group(level_sprites[room_number][1])
+        all_sprites.update()
+        all_sprites.draw(screen)
+        only_player_group.update()
+        only_player_group.draw(screen)
+
         draw_interface()
         clock.tick(fps)
         pygame.display.flip()

@@ -497,7 +497,7 @@ if __name__ == '__main__':
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
     walls = []
-    level_map = load_level('map.map')
+    level_map = load_level('level 0')
 
     player, level = generate_level(level_map)
     # gun = Gun(7, 10, gun_img)
