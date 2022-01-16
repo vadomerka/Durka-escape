@@ -13,6 +13,7 @@ creature_group = pygame.sprite.Group()
 doors_group = pygame.sprite.Group()
 only_player_group = pygame.sprite.Group()
 player_attacks = pygame.sprite.Group()
+chests_group = pygame.sprite.Group()
 
 
 def terminate():
@@ -76,12 +77,12 @@ def generate_level(lev, filename):
                 background.append((Wall, "empty", x, y))
                 front.append((Enemy, x, y, enemy_img))
             elif lev[y][x] == 'W':
-                # wall = Wall('empty', x, y)
-                # walls.append(wall)
                 background.append((Wall, "empty", x, y))
-                #print(weapon_images[random.choice(weapons)])
                 front.append((Gun, x, y, random.choice(weapons)))
                 lev[y][x] = "."
+            elif lev[y][x] == 'C':
+                background.append((Wall, "empty", x, y))
+                background.append((Chest, chests_images["closed"], x, y))
             elif lev[y][x] in numbers:
                 front.append((Door, x, y, lev[y][x]))
     room_maps[int(filename[-1])] = lev
@@ -212,12 +213,33 @@ class Door(pygame.sprite.Sprite):
         player.rect.y = self.rect.y
 
 
+class Chest(pygame.sprite.Sprite):
+    def __init__(self, img, pos_x, pos_y):
+        self.image = pygame.transform.scale(img, (cell_w, cell_h))
+        self.rect = self.image.get_rect().move(
+            cell_w * pos_x, cell_h * pos_y)
+        super().__init__(all_sprites, chests_group)
+        self.near_player = False
+        self.opened = False
+
+    def update(self):
+        self.near_player = pygame.sprite.collide_mask(self, player)
+
+    def open(self):
+        size_of_cap = 29
+        if not self.opened:
+            level_sprites[room_number][1].append(
+            Gun(self.rect.x // cell_w, (self.rect.y - self.rect.h) // cell_h, random.choice(weapons)))
+            self.rect.y -= size_of_cap
+        self.image = chests_images["open"]
+        self.opened = True
+
+
 class Gun(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, type):
         global player_group
         super().__init__(player_group)
         self.type = type
-        #print(img)
         self.damage = weapon_images[self.type][1]
         self.attack_speed = weapon_images[self.type][2]
         self.image = pygame.transform.scale(weapon_images[self.type][0], (cell_w, cell_h))
@@ -227,7 +249,7 @@ class Gun(pygame.sprite.Sprite):
         self.bullet = None
         self.move_speed = 2
         self.speed_x = random.randint(-self.move_speed, self.move_speed)
-        self.speed_y = random.randint(-self.move_speed, 0)
+        self.speed_y = -self.move_speed
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.mask = pygame.mask.from_surface(self.image)
@@ -241,6 +263,7 @@ class Gun(pygame.sprite.Sprite):
         self.equipped = False
 
     def update(self):
+        # print(self.rect.x)
         if self.equipped:
             self.rect.x = width - cell_w * 2.5
             self.rect.y = cell_h * 1.5
@@ -318,8 +341,7 @@ class Gun(pygame.sprite.Sprite):
         col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
         if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
                 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
-                level[row1][col1] == '#' or \
-                level[row2][col2] == '#':
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
             self.min_y = (self.rect.y // cell_h) * cell_h
         else:
             self.min_y = height - self.rect.height
@@ -329,8 +351,7 @@ class Gun(pygame.sprite.Sprite):
         col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
         if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
                 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
-                level[row1][col1] == '#' or \
-                level[row2][col2] == '#':
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
             self.max_y = self.rect.y // cell_h * cell_h
             self.speed_y = 0
             self.rect.y = self.max_y + cell_h
@@ -342,8 +363,7 @@ class Gun(pygame.sprite.Sprite):
         col2 = self.rect.x // cell_w + self.rect.w // cell_w
         if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
                 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
-                level[row1][col1] == '#' or \
-                level[row2][col2] == '#':
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
             self.max_x = self.rect.x
         else:
             self.max_x = width - player_w
@@ -353,8 +373,7 @@ class Gun(pygame.sprite.Sprite):
         col2 = self.rect.x // cell_w
         if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
                 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
-                level[row1][col1] == '#' or \
-                level[row2][col2] == '#':
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
             self.min_x = self.rect.x
             self.rect.x += 1
         else:
@@ -682,6 +701,10 @@ if __name__ == '__main__':
         'spoon': [load_image('spoon.png'), 5, 1.5],
         'syringe': [load_image('syringe.png'), 6, 1]
     }
+    chests_images = {
+        "closed": load_image('closed_chest.png'),
+        "open": load_image('opened_chest.png')
+    }
     weapons = ['spoon', 'syringe']
     doors_images = {
         0: load_image("green_door.png"),
@@ -747,6 +770,14 @@ if __name__ == '__main__':
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(door_group)))
                         if near_doors:
                             near_doors[-1].enter()
+                    if pygame.sprite.spritecollideany(player, chests_group):
+                        door_group = pygame.sprite.Group(
+                            list(filter(lambda obj: isinstance(obj, Chest),
+                                        level_sprites[room_number][1])))
+                        near_chests = list(filter(
+                            lambda obj: pygame.sprite.collide_mask(player, obj), list(chests_group)))
+                        if near_chests:
+                            near_chests[-1].open()
 
         level = room_maps[room_number]
         # print(level_sprites[room_number])
