@@ -174,7 +174,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(pos_x, pos_y)
-        self.count = 0
+        self.reversed = False
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -186,10 +186,10 @@ class AnimatedSprite(pygame.sprite.Sprite):
                     frame_location, self.rect.size)))
 
     def update(self):
-        if self.count % 5 == 0:
-            self.cur_frame = (self.cur_frame + 1) % len(self.frames)
-            self.image = self.frames[self.cur_frame]
-        self.count += 1
+        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+        self.image = self.frames[self.cur_frame]
+        if self.reversed:
+            self.image = pygame.transform.flip(self.image, True, False)
 
 
 class Door(pygame.sprite.Sprite):
@@ -668,7 +668,7 @@ if __name__ == '__main__':
     fps = 60
     player_img = load_image('sad_cat.jpg')
     enemy_img = load_image('box.png')
-    bul_img = load_image('hit.png')
+    bul_img = load_image('hit_sheet.png')
     wall_img = load_image('box.png')
     heart_image = load_image("small_heart.png")
     first_weapon = False
