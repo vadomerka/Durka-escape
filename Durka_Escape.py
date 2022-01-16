@@ -3,7 +3,6 @@ import sys
 import random
 import pygame
 
-
 cell_h = cell_w = 50
 size = width, height = 1000, 800
 player_h = cell_h * 2
@@ -168,12 +167,13 @@ class Door(pygame.sprite.Sprite):
         room_number = self.room_num
         player.rect.x = self.rect.x
         player.rect.y = self.rect.y
+        print("entered")
 
 
 class Gun(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, img):
-        global player_group
-        super().__init__(player_group)
+        # global player_group
+        super().__init__()
         self.type = "spoon"
         self.damage = 5
         self.attack_speed = 1
@@ -225,7 +225,7 @@ class Gun(pygame.sprite.Sprite):
             self.shoot_cooldown -= (1 / fps)
         else:
             self.shoot_cooldown = 0
-        if pygame.sprite.collide_mask(self, player):
+        if pygame.sprite.collide_mask(self, player) and not self.equipped:
             self.draw_stats()
             # self.equip()
             self.near_player = True
@@ -235,8 +235,10 @@ class Gun(pygame.sprite.Sprite):
     def draw_stats(self):
         last_stats = [0, 0]
         intro_text = ["Wanna grab a " + self.type + " ?",
-                      "             old stats: damage, " + str(last_stats[0]) + " speed, " + str(last_stats[1]),
-                      "             new stats: damage, " + str(self.damage) + " speed, " + str(self.attack_speed)]
+                      "             old stats: damage, " + str(last_stats[0]) + " speed, " + str(
+                          last_stats[1]),
+                      "             new stats: damage, " + str(self.damage) + " speed, " + str(
+                          self.attack_speed)]
 
         fon = pygame.transform.scale(gun_img, (width * 0.8, height * 0.8))
         screen.blit(fon, (width * 0.1, height * 0.1))
@@ -310,11 +312,12 @@ class Gun(pygame.sprite.Sprite):
 
     def shoot(self):
         if self.equipped and self.shoot_cooldown == 0:
-            pos_x = player.rect.x if player.direction < 0 \
+            pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                 else player.rect.x + player.rect.w
             pos_y = player.rect.y
             self.bullet = Bullet(bul_img, pos_x, pos_y, damage=self.damage,
-                                 speed_x=(5 * player.direction), speed_y=0, gravitated=False, timer=1)
+                                 speed_x=(0 * player.direction), speed_y=0, gravitated=False,
+                                 timer=1)
             # print("bang")
             self.shoot_cooldown = 1
         # else:
@@ -327,13 +330,15 @@ class Bullet(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(img, (cell_w, cell_h))
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         level_sprites[room_number][1].append(self)
-        self.rect.x = pos_x - self.rect.w
+        self.rect.x = pos_x
         self.rect.y = pos_y
         self.speed_x = speed_x
         self.speed_y = speed_y
         self.timer = timer
         self.damage = damage
         self.direction = -1
+        if self.speed_x == 0:
+            self.rotate(player.direction)
         self.gravitated = gravitated
 
     def kill(self):
@@ -651,7 +656,7 @@ if __name__ == '__main__':
         if keys[pygame.K_s]:
             player.movement("y", "down")
         # if keys[pygame.K_SPACE]:
-            # print(player.rect.y // 100 + 1, round(player.rect.x * 2 / 100 print()+ 1))
+        # print(player.rect.y // 100 + 1, round(player.rect.x * 2 / 100 print()+ 1))
         if not (keys[pygame.K_a] or keys[pygame.K_d]):  # если юзер не двигается по х, тогда стоп
             player.movement("x", "stop")
 
@@ -664,23 +669,24 @@ if __name__ == '__main__':
                 terminate()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_e:
-                    if pygame.sprite.spritecollideany(player, player_group):
-                        # берем все предметы, и оставляем только те, с которыми коллайдится игрок
+                    # берем все пистолеты в комнате
+                    gun_group = pygame.sprite.Group(list(filter(lambda obj: isinstance(obj, Gun),
+                                                                level_sprites[room_number][1])))
+                    if pygame.sprite.spritecollideany(player, gun_group):
+                        # оставляем только те, с которыми коллайдится игрок
                         equipable_entities = list(filter(
-                            lambda obj: pygame.sprite.collide_mask(player, obj), list(player_group)))
+                            lambda obj: pygame.sprite.collide_mask(player, obj), list(gun_group)))
                         if equipable_entities:
                             equipable_entities[-1].equip()
                     if pygame.sprite.spritecollideany(player, doors_group):
+                        door_group = pygame.sprite.Group(
+                            list(filter(lambda obj: isinstance(obj, Door),
+                                        level_sprites[room_number][1])))
                         near_doors = list(filter(
-                            lambda obj: pygame.sprite.collide_mask(player, obj), list(doors_group)))
+                            lambda obj: pygame.sprite.collide_mask(player, obj), list(door_group)))
                         if near_doors:
                             near_doors[-1].enter()
-                pass
 
-        # all_sprites.draw(screen)
-        # player_group.draw(screen)
-        # all_sprites.update()
-        # player_group.update()
         level = room_maps[room_number]
         # print(level_sprites[room_number])
         all_sprites = pygame.sprite.Group(level_sprites[room_number][0])
