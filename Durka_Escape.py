@@ -12,6 +12,7 @@ gravity = 0.1
 creature_group = pygame.sprite.Group()
 doors_group = pygame.sprite.Group()
 only_player_group = pygame.sprite.Group()
+player_attacks = pygame.sprite.Group()
 
 
 def terminate():
@@ -169,20 +170,23 @@ class Door(pygame.sprite.Sprite):
         player.rect.y = self.rect.y
 
 
-class Gun(AnimatedSprite):
+class Gun(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, img):
         global player_group
-        super().__init__(load_image("spoon_ainm.png"), 4, 2, pos_x, pos_y, player_group)
+        super().__init__(player_group)
         self.type = "spoon"
         self.damage = 5
         self.attack_speed = 1
         self.image = pygame.transform.scale(img, (cell_w, cell_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
+        self.shoot_cooldown = 0
+        self.bullet = None
         self.move_speed = 2
         self.speed_x = random.randint(-self.move_speed, self.move_speed)
         self.speed_y = random.randint(-self.move_speed, 0)
-        self.pos = (pos_x, pos_y)
+        self.pos_x = pos_x
+        self.pos_y = pos_y
         self.mask = pygame.mask.from_surface(self.image)
         self.plat = False
         self.near_player = False
@@ -215,6 +219,12 @@ class Gun(AnimatedSprite):
         if self.rect.y <= self.max_y:
             self.rect.y = self.max_y
 
+        # if self.bullet:
+        #     self.bullet.update()
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown -= (1 / fps)
+        else:
+            self.shoot_cooldown = 0
         if pygame.sprite.collide_mask(self, player):
             self.draw_stats()
             # self.equip()
@@ -245,7 +255,9 @@ class Gun(AnimatedSprite):
     def equip(self):
         global level_sprites, room_number
         player.weapon = self
-        level_sprites[room_number][1].remove(self)
+        if self in level_sprites[room_number][1]:
+            level_sprites[room_number][1].remove(self)
+        self.equipped = True
 
     def collide(self):
         row1 = self.rect.y // cell_h + self.rect.h // cell_h
@@ -297,13 +309,64 @@ class Gun(AnimatedSprite):
             self.min_x = 0
 
     def shoot(self):
-        print("bang")
+        if self.equipped and self.shoot_cooldown == 0:
+            pos_x = player.rect.x if player.direction < 0 \
+                else player.rect.x + player.rect.w
+            pos_y = player.rect.y
+            self.bullet = Bullet(bul_img, pos_x, pos_y, damage=self.damage,
+                                 speed_x=(5 * player.direction), speed_y=0, gravitated=False, timer=1)
+            # print("bang")
+            self.shoot_cooldown = 1
+        # else:
+        #     print(self.shoot_cooldown)
 
 
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, img):
-        super().__init__(all_sprites)
-        pass
+    def __init__(self, img, pos_x, pos_y, damage, speed_x, speed_y, gravitated, timer):
+        super().__init__(player_attacks)
+        self.image = pygame.transform.scale(img, (cell_w, cell_h))
+        self.rect = self.image.get_rect().move(pos_x, pos_y)
+        level_sprites[room_number][1].append(self)
+        self.rect.x = pos_x - self.rect.w
+        self.rect.y = pos_y
+        self.speed_x = speed_x
+        self.speed_y = speed_y
+        self.timer = timer
+        self.damage = damage
+        self.direction = -1
+        self.gravitated = gravitated
+
+    def kill(self):
+        super().kill()
+        if self in level_sprites[room_number][1]:
+            level_sprites[room_number][1].remove(self)
+
+    def update(self):
+        super().update()
+        if self.timer > 0:
+            self.timer -= 1 / fps
+        else:
+            self.kill()
+
+        if self.speed_x > 0:
+            new_dir = 1
+        elif self.speed_x < 0:
+            new_dir = -1
+        else:
+            new_dir = 0
+        self.rotate(new_dir)
+        if self.gravitated:
+            self.speed_y -= gravity
+        self.rect.x += self.speed_x
+        self.rect.y += self.speed_y
+
+    def rotate(self, new_dir):
+        # print(self.direction)
+        if new_dir and new_dir != self.direction:
+            flip_x = True
+            flip_y = False
+            self.direction = new_dir
+            self.image = pygame.transform.flip(self.image, flip_x, flip_y)
 
 
 class Wall(Sprite):
@@ -318,7 +381,6 @@ class Wall(Sprite):
         self.speed_y = 0
         self.pos = (pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
-        self.direction = 0
 
     def update(self):
         if pygame.sprite.collide_mask(self, player):
@@ -333,9 +395,11 @@ class Creature(pygame.sprite.Sprite):
             cell_w * pos_x, cell_h * pos_y)
         self.speed_x = 0
         self.speed_y = 0
+        self.max_health = health
         self.health = health
         self.damage = damage
         self.move_speed = speed
+        self.direction = -1
         self.pos = (pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
         self.plat = False
@@ -371,6 +435,11 @@ class Creature(pygame.sprite.Sprite):
         if line == "stop":
             pass
 
+    def kill(self):
+        super().kill()
+        if self in level_sprites[room_number][1]:
+            level_sprites[room_number][1].remove(self)
+
     def update(self):
         # умирание
         if self.health <= 0:
@@ -388,7 +457,13 @@ class Creature(pygame.sprite.Sprite):
         self.speed_y += gravity
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
-
+        if self.speed_x > 0:
+            new_dir = 1
+        elif self.speed_x < 0:
+            new_dir = -1
+        else:
+            new_dir = 0
+        self.rotate(new_dir)
         # функция стен (!ее нельзя переносить относительно других штук в этой функции!)
         if self.rect.x >= self.max_x:
             self.rect.x = self.max_x
@@ -399,6 +474,13 @@ class Creature(pygame.sprite.Sprite):
             self.rect.y = self.min_y
         if self.rect.y <= self.max_y:
             self.rect.y = self.max_y
+
+    def rotate(self, new_dir):
+        if new_dir and new_dir != self.direction:
+            flip_x = True
+            flip_y = False
+            self.direction = new_dir
+            self.image = pygame.transform.flip(self.image, flip_x, flip_y)
 
     def collide(self):
         row1 = self.rect.y // cell_h + self.rect.h // cell_h
@@ -465,6 +547,15 @@ class Enemy(Creature):
                 vx = 0
             self.speed_x = vx
 
+    def draw_hp(self):
+        length_of_health_bar = cell_w * 2
+        hp_val = 5
+        hp_size = (length_of_health_bar / self.max_health) * hp_val
+        start_of_bar = self.rect.centerx - (length_of_health_bar // 2)
+        for hp in range(0, round(self.health), hp_val):
+            screen.blit(pygame.transform.scale(heart_image, (hp_size, hp_size)),
+                        (start_of_bar + hp, self.rect.y - hp_size * 2))
+
     def AI(self):
         direction = random.randint(0, 3)
         if direction <= 1:
@@ -476,9 +567,15 @@ class Enemy(Creature):
 
     def update(self):
         super().update()
-        self.AI()
+        # self.AI()
+        self.draw_hp()
         if pygame.sprite.collide_mask(self, player):
             player.health -= self.damage
+        # print(player_attacks)
+        for obj in player_attacks:
+            if pygame.sprite.collide_mask(self, obj):
+                self.health -= obj.damage
+                # print(self.health)
 
 
 class Player(Creature):
@@ -486,11 +583,16 @@ class Player(Creature):
         super().__init__(pos_x, pos_y, img, cell_w, cell_h * 2, damage=0, speed=5)
         self.weapon = None
 
-    # def update(self):
-        # super().update()
+    def update(self):
+        super().update()
+        if self.weapon:
+            self.weapon.update()
+            self.weapon.pos_x = self.rect.x
+            self.weapon.pos_y = self.rect.y
 
     def attack(self):
-        self.weapon.shoot()
+        if self.weapon:
+            self.weapon.shoot()
 
 
 if __name__ == '__main__':
@@ -508,7 +610,7 @@ if __name__ == '__main__':
     screen.fill(pygame.Color("black"))
     clock = pygame.time.Clock()
     fps = 60
-    player_img = load_image('mar.png')
+    player_img = load_image('sad_cat.jpg')
     enemy_img = load_image('box.png')
     gun_img = load_image('spoon.png')
     bul_img = load_image('hit.png')
@@ -566,11 +668,13 @@ if __name__ == '__main__':
                         # берем все предметы, и оставляем только те, с которыми коллайдится игрок
                         equipable_entities = list(filter(
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(player_group)))
-                        equipable_entities[-1].equip()
+                        if equipable_entities:
+                            equipable_entities[-1].equip()
                     if pygame.sprite.spritecollideany(player, doors_group):
                         near_doors = list(filter(
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(doors_group)))
-                        near_doors[-1].enter()
+                        if near_doors:
+                            near_doors[-1].enter()
                 pass
 
         # all_sprites.draw(screen)
