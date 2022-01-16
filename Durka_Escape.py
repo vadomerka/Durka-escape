@@ -124,7 +124,7 @@ class Sprite(pygame.sprite.Sprite):
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, sheet, columns, rows, pos_x, pos_y, group):
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, group, rev=False):
         super().__init__(group)
         self.frames = []
         self.cut_sheet(sheet, columns, rows)
@@ -132,6 +132,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(pos_x, pos_y)
         self.count = 0
+        self.reversed = rev
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -143,10 +144,10 @@ class AnimatedSprite(pygame.sprite.Sprite):
                     frame_location, self.rect.size)))
 
     def update(self):
-        if self.count % 5 == 0:
-            self.cur_frame = (self.cur_frame + 1) % len(self.frames)
-            self.image = self.frames[self.cur_frame]
-        self.count += 1
+        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+        self.image = self.frames[self.cur_frame]
+        if self.reversed:
+            self.image = pygame.transform.flip(self.image, True, False)
 
 
 class Door(pygame.sprite.Sprite):
@@ -172,7 +173,6 @@ class Door(pygame.sprite.Sprite):
 
 class Gun(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, img):
-        # global player_group
         super().__init__()
         self.type = "spoon"
         self.damage = 5
@@ -317,16 +317,13 @@ class Gun(pygame.sprite.Sprite):
             pos_y = player.rect.y
             self.bullet = Bullet(bul_img, pos_x, pos_y, damage=self.damage,
                                  speed_x=(0 * player.direction), speed_y=0, gravitated=False,
-                                 timer=1)
-            # print("bang")
+                                 timer=0.1)
             self.shoot_cooldown = 1
-        # else:
-        #     print(self.shoot_cooldown)
 
 
-class Bullet(pygame.sprite.Sprite):
+class Bullet(AnimatedSprite):
     def __init__(self, img, pos_x, pos_y, damage, speed_x, speed_y, gravitated, timer):
-        super().__init__(player_attacks)
+        super().__init__(img, 5, 1, pos_x, pos_y, player_attacks)
         self.image = pygame.transform.scale(img, (cell_w, cell_h))
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         level_sprites[room_number][1].append(self)
@@ -372,6 +369,10 @@ class Bullet(pygame.sprite.Sprite):
             flip_y = False
             self.direction = new_dir
             self.image = pygame.transform.flip(self.image, flip_x, flip_y)
+        if self.direction == 1:
+            self.reversed = True
+        elif self.direction == -1:
+            self.reversed = False
 
 
 class Wall(Sprite):
@@ -618,7 +619,7 @@ if __name__ == '__main__':
     player_img = load_image('sad_cat.jpg')
     enemy_img = load_image('box.png')
     gun_img = load_image('spoon.png')
-    bul_img = load_image('hit.png')
+    bul_img = load_image('hit_sheet.png')
     wall_img = load_image('box.png')
     heart_image = load_image("small_heart.png")
     tile_images = {
