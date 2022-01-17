@@ -424,11 +424,11 @@ class Gun(pygame.sprite.Sprite):
             self.min_x = 0
 
     def shoot(self):
-        if self.equipped and self.shoot_cooldown == 0:
+        if self.equipped and self.shoot_cooldown == 0 and first_weapon != 'empty':
             pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                 else player.rect.x + player.rect.w
             pos_y = player.rect.y
-            self.bullet = Bullet(bul_img, pos_x, pos_y, damage=self.damage,
+            self.bullet = Bullet(bul_img, pos_x, pos_y, damage=player.damage,
                                  speed_x=(0 * player.direction), speed_y=0, gravitated=False,
                                  timer=0.1)
             self.shoot_cooldown = 1
@@ -705,6 +705,7 @@ class Player(Creature):
     def update(self):
         super().update()
         if self.weapon:
+            self.damage, self.move_speed = weapon_images[first_weapon][1], weapon_images[first_weapon][2] * self.move_speed
             self.weapon.update()
             self.weapon.pos_x = self.rect.x
             self.weapon.pos_y = self.rect.y
@@ -734,16 +735,17 @@ if __name__ == '__main__':
     bul_img = load_image('hit_sheet.png')
     wall_img = load_image('box.png')
     heart_image = load_image("small_heart.png")
-    first_weapon = False
-    second_weapon = False
+    first_weapon = 'empty'
+    second_weapon = 'empty'
     invent_image = load_image('рамка.png')
     tile_images = {
         'wall': load_image('box.png'),
         'empty': load_image('grass.png')
     }
     weapon_images = {
-        'spoon': [load_image('spoon.png'), 5, 1.5],
-        'syringe': [load_image('syringe.png'), 6, 1]
+        'empty': [load_image('empty.png'), 0, 1],
+        'spoon': [load_image('spoon.png'), 1, 1],
+        'syringe': [load_image('syringe.png'), 5, 1]
     }
     chests_images = {
         "closed": load_image('closed_chest.png'),
@@ -805,11 +807,12 @@ if __name__ == '__main__':
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(gun_group)))
                         if equipable_entities:
                             equipable_entities[-1].equip()
-                            if not first_weapon:
+                            if first_weapon == 'empty':
                                 first_weapon = equipable_entities[-1].type
-                            elif first_weapon and not second_weapon:
-                                second_weapon = equipable_entities[-1].type
                                 print(first_weapon)
+                            elif first_weapon and second_weapon == 'empty' and first_weapon != equipable_entities[-1].type:
+                                second_weapon = equipable_entities[-1].type
+                                print(second_weapon)
                     # "Е" рядом с дверью
                     if pygame.sprite.spritecollideany(player, doors_group):
                         door_group = pygame.sprite.Group(
@@ -828,6 +831,9 @@ if __name__ == '__main__':
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(chests_group)))
                         if near_chests:
                             near_chests[-1].open()
+                # замена оружия на второстепенное
+                if event.key == pygame.K_q:
+                        first_weapon, second_weapon = second_weapon, first_weapon
 
         level = room_maps[room_number]
         # print(level_sprites[room_number])
