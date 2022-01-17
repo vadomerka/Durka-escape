@@ -121,15 +121,15 @@ def next_level():
 
 
 def draw_interface():
-    global weapon_images
+    global weapons_info
     for hp in range(0, player.health, 5):
         screen.blit(heart_image, (hp * 5, 0))
     screen.blit(pygame.transform.scale(invent_image, (cell_w * 3, cell_h * 3)), (width - cell_w * 3, cell_h))
     if first_weapon:
-        screen.blit(pygame.transform.scale(weapon_images[first_weapon][0],
+        screen.blit(pygame.transform.scale(weapons_info[first_weapon][0],
                                            (cell_w * 3, cell_h * 3)), (width - cell_w * 3, cell_h))
     if second_weapon:
-        screen.blit(pygame.transform.scale(weapon_images[second_weapon][0],
+        screen.blit(pygame.transform.scale(weapons_info[second_weapon][0],
                                            (cell_w, cell_h)), (width - cell_w * 3, cell_h * 3))
 
 
@@ -272,8 +272,11 @@ class Chest(pygame.sprite.Sprite):
     def open(self):
         size_of_cap = 29
         if not self.opened:
+            weapon = 'empty'
+            while weapon == first_weapon or weapon == second_weapon:
+                weapon = random.choice(weapons)
             level_sprites[room_number][1].append(
-            Gun(self.rect.x // cell_w, (self.rect.y - self.rect.h) // cell_h, random.choice(weapons)))
+            Gun(self.rect.x // cell_w, (self.rect.y - self.rect.h) // cell_h, weapon))
             self.rect.y -= size_of_cap
         self.image = chests_images["open"]
         self.opened = True
@@ -284,9 +287,9 @@ class Gun(pygame.sprite.Sprite):
         global player_group
         super().__init__(player_group)
         self.type = type
-        self.damage = weapon_images[self.type][1]
-        self.attack_speed = weapon_images[self.type][2]
-        self.image = pygame.transform.scale(weapon_images[self.type][0], (cell_w, cell_h))
+        self.damage = weapons_info[self.type][1]
+        self.attack_speed = weapons_info[self.type][2]
+        self.image = pygame.transform.scale(weapons_info[self.type][0], (cell_w, cell_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
         self.shoot_cooldown = 0
@@ -303,6 +306,7 @@ class Gun(pygame.sprite.Sprite):
         self.max_y = 0
         self.max_x = width - self.rect.w
         self.min_x = 0
+        self.range = weapons_info[type][3]
 
         self.equipped = False
 
@@ -353,9 +357,9 @@ class Gun(pygame.sprite.Sprite):
             self.near_player = False
 
     def draw_stats(self):
-        intro_text = ["Wanna grab a " + self.type + " ?",
-                      "             old stats: damage, " + str(player.stats[0]) + " speed, " + str(player.stats[1]),
-                      "             new stats: damage, " + str(self.damage) + " speed, " + str(self.attack_speed)]
+        intro_text = ["Wanna grab a " + self.type + "?",
+                      "             old stats: damage " + str(player.stats[0]) + ", speed " + str(player.stats[1]),
+                      "             new stats: damage " + str(self.damage) + ", speed " + str(self.attack_speed)]
 
         fon = pygame.transform.scale(self.image, (width * 0.8, height * 0.8))
         screen.blit(fon, (width * 0.1, height * 0.1))
@@ -424,14 +428,25 @@ class Gun(pygame.sprite.Sprite):
             self.min_x = 0
 
     def shoot(self):
-        if self.equipped and self.shoot_cooldown == 0 and first_weapon != 'empty':
-            pos_x = player.rect.x - player.rect.w if player.direction < 0 \
-                else player.rect.x + player.rect.w
-            pos_y = player.rect.y
-            self.bullet = Bullet(bul_img, pos_x, pos_y, damage=player.damage,
-                                 speed_x=(0 * player.direction), speed_y=0, gravitated=False,
-                                 timer=0.1)
-            self.shoot_cooldown = 1
+        if weapons_info[first_weapon][3] == 'melee':
+            if self.equipped and self.shoot_cooldown == 0 and first_weapon != 'empty':
+                pos_x = player.rect.x - player.rect.w if player.direction < 0 \
+                    else player.rect.x + player.rect.w
+                pos_y = player.rect.y
+                self.bullet = Bullet(bul_img, pos_x, pos_y, damage=player.damage,
+                                     speed_x=(0 * player.direction), speed_y=0, gravitated=False,
+                                     timer=0.1)
+                self.shoot_cooldown = 1
+
+        elif weapons_info[first_weapon][3] == 'long-range':
+            if self.equipped and self.shoot_cooldown == 0:
+                pos_x = player.rect.x if player.direction < 0 \
+                    else player.rect.x + player.rect.w
+                pos_y = player.rect.y
+                self.bullet = Bullet(bul_img, pos_x, pos_y, damage=player.damage,
+                                     speed_x=(5 * player.direction), speed_y=0, gravitated=False, timer=1)
+                # print("bang")
+                self.shoot_cooldown = 1
 
 
 class Bullet(AnimatedSprite):
@@ -705,7 +720,7 @@ class Player(Creature):
     def update(self):
         super().update()
         if self.weapon:
-            self.damage, self.move_speed = weapon_images[first_weapon][1], weapon_images[first_weapon][2] * self.move_speed
+            self.damage, self.move_speed = weapons_info[first_weapon][1], weapons_info[first_weapon][2] * self.move_speed
             self.weapon.update()
             self.weapon.pos_x = self.rect.x
             self.weapon.pos_y = self.rect.y
@@ -733,6 +748,7 @@ if __name__ == '__main__':
     player_img = load_image('sad_cat.jpg')
     enemy_img = load_image('box.png')
     bul_img = load_image('hit_sheet.png')
+    melee_img = load_image("hit.png")
     wall_img = load_image('box.png')
     heart_image = load_image("small_heart.png")
     first_weapon = 'empty'
@@ -742,10 +758,10 @@ if __name__ == '__main__':
         'wall': load_image('box.png'),
         'empty': load_image('grass.png')
     }
-    weapon_images = {
-        'empty': [load_image('empty.png'), 0, 1],
-        'spoon': [load_image('spoon.png'), 1, 1],
-        'syringe': [load_image('syringe.png'), 5, 1]
+    weapons_info = {
+        'empty': [load_image('empty.png'), 0, 1, 'melee'],
+        'spoon': [load_image('spoon.png'), 1, 1, 'melee'],
+        'syringe': [load_image('syringe.png'), 5, 1, 'long-range']
     }
     chests_images = {
         "closed": load_image('closed_chest.png'),
@@ -772,7 +788,8 @@ if __name__ == '__main__':
     level_sprites = [0] * 9
     generate_level(level_map, 'room 0')
     only_player_group.add(player)
-
+    paused = False
+    start_screen()
     running = True
     while running:
         screen.fill((0, 0, 0))
@@ -834,18 +851,40 @@ if __name__ == '__main__':
                 # замена оружия на второстепенное
                 if event.key == pygame.K_q:
                         first_weapon, second_weapon = second_weapon, first_weapon
+                # пауза
+                if event.key == pygame.K_ESCAPE:
+                    print('esc')
+                    if not paused:
+                        paused = True
+                    else:
+                        paused = False
 
-        level = room_maps[room_number]
-        # print(level_sprites[room_number])
-        all_sprites = pygame.sprite.Group(level_sprites[room_number][0])
-        all_sprites.update()
-        all_sprites.draw(screen)
-        all_sprites = pygame.sprite.Group(level_sprites[room_number][1])
-        all_sprites.update()
-        all_sprites.draw(screen)
-        only_player_group.update()
-        only_player_group.draw(screen)
+        if not paused:
+            level = room_maps[room_number]
+            # print(level_sprites[room_number])
+            all_sprites = pygame.sprite.Group(level_sprites[room_number][0])
+            all_sprites.update()
+            all_sprites.draw(screen)
+            all_sprites = pygame.sprite.Group(level_sprites[room_number][1])
+            all_sprites.update()
+            all_sprites.draw(screen)
+            only_player_group.update()
+            only_player_group.draw(screen)
 
-        draw_interface()
+            draw_interface()
+        else:
+            intro_text = ["Продолжить игру", ""]
+            fon = pygame.transform.scale(load_image('paused.jpg'), (screen.get_size()))
+            screen.blit(fon, (0, 0))
+            font = pygame.font.Font(None, 50)
+            text_coord = 50
+            for line in intro_text:
+                string_rendered = font.render(line, 1, pygame.Color('black'))
+                intro_rect = string_rendered.get_rect()
+                text_coord += 10
+                intro_rect.top = text_coord
+                intro_rect.x = 10
+                text_coord += intro_rect.height
+                screen.blit(string_rendered, intro_rect)
         clock.tick(fps)
         pygame.display.flip()
