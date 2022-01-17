@@ -578,10 +578,10 @@ if __name__ == '__main__':
     walls = []
     player = None
     room_number = 0
-    level_map = load_level('level 0')
+    level_map = load_level('room 0')
     room_maps = [0] * 9
     level_sprites = [0] * 9
-    generate_level(level_map, 'level 0')
+    generate_level(level_map, 'room 0')
     only_player_group.add(player)
     start_screen()
     running = True
