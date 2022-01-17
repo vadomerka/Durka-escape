@@ -748,6 +748,7 @@ if __name__ == '__main__':
                 terminate()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_e:
+                    # "Е" рядом с пистолетом
                     # берем все пистолеты в комнате
                     gun_group = pygame.sprite.Group(list(filter(lambda obj: isinstance(obj, Gun),
                                                                 level_sprites[room_number][1])))
@@ -762,6 +763,7 @@ if __name__ == '__main__':
                             elif first_weapon and not second_weapon:
                                 second_weapon = equipable_entities[-1].type
                                 print(first_weapon)
+                    # "Е" рядом с дверью
                     if pygame.sprite.spritecollideany(player, doors_group):
                         door_group = pygame.sprite.Group(
                             list(filter(lambda obj: isinstance(obj, Door),
@@ -770,6 +772,7 @@ if __name__ == '__main__':
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(door_group)))
                         if near_doors:
                             near_doors[-1].enter()
+                    # "Е" рядом с сундуком
                     if pygame.sprite.spritecollideany(player, chests_group):
                         door_group = pygame.sprite.Group(
                             list(filter(lambda obj: isinstance(obj, Chest),
