@@ -1,10 +1,14 @@
-import pygame
 import os
 import sys
 import random
 import pygame
 
 
+cell_h = cell_w = 50
+size = width, height = 1000, 800
+player_h = cell_h * 2
+player_w = cell_w
+gravity = 0.1
 creature_group = pygame.sprite.Group()
 doors_group = pygame.sprite.Group()
 only_player_group = pygame.sprite.Group()
@@ -116,24 +120,6 @@ def next_level():
     only_player_group.add(player)
 
 
-def restart_level():
-    global all_sprites, player_group, player, room_number, level_map, room_maps, level_sprites, \
-        creature_group, doors_group, only_player_group, player_attacks, chests_group, stage
-    all_sprites = SpriteGroup()
-    player_group = SpriteGroup()
-    creature_group = pygame.sprite.Group()
-    doors_group = pygame.sprite.Group()
-    only_player_group = pygame.sprite.Group()
-    player_attacks = pygame.sprite.Group()
-    chests_group = pygame.sprite.Group()
-    room_number = 0
-    level_map = load_level('room 0')
-    room_maps = [0] * 9
-    level_sprites = [0] * 9
-    generate_level(level_map, 'room 0')
-    only_player_group.add(player)
-
-
 def draw_interface():
     global weapons_info
     for hp in range(0, player.health, 5):
@@ -178,39 +164,6 @@ def start_screen():
 
         pygame.display.flip()
         clock.tick(fps)
-
-
-def death_screen():
-    intro_text = ["Начать игру", "",
-                  "",
-                  "Новая игра"]
-
-    fon = pygame.transform.scale(load_image('Каневский_злится.jpg'), (screen.get_size()))
-    screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 50)
-    text_coord = 50
-    for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if 210 > event.pos[0] > 0 and 100 > event.pos[1] > 50:
-                    restart_level()
-                    return
-                if event.pos[0] and event.pos[1]:
-                    pass
-                print(event.pos)
-
-        pygame.display.flip()
 
 
 class SpriteGroup(pygame.sprite.Group):
@@ -339,7 +292,7 @@ class Gun(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(weapons_info[self.type][0], (cell_w, cell_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
-        self.shoot_cooldown = weapons_info[self.type][2]
+        self.shoot_cooldown = 0
         self.bullet = None
         self.move_speed = 2
         self.speed_x = random.randint(-self.move_speed, self.move_speed)
@@ -358,7 +311,6 @@ class Gun(pygame.sprite.Sprite):
         self.equipped = False
 
     def update(self):
-        # print(self.rect.x)
         if self.equipped:
             self.rect.x = width - cell_w * 2.5
             self.rect.y = cell_h * 1.5
@@ -367,7 +319,6 @@ class Gun(pygame.sprite.Sprite):
                 self.shoot_cooldown -= (1 / fps)
             else:
                 self.shoot_cooldown = 0
-            # print(self.min_x, self.max_y)
         else:
             self.collide()
             if self.rect.y == self.min_y:
@@ -480,7 +431,7 @@ class Gun(pygame.sprite.Sprite):
                 pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
-                self.bullet = Bullet(bul_img, pos_x, pos_y, damage=player.damage,
+                self.bullet = Bullet_A(bul_img, pos_x, pos_y, damage=player.damage,
                                      speed_x=(0 * player.direction), speed_y=0, gravitated=False,
                                      timer=0.1)
                 self.shoot_cooldown = 1
@@ -490,13 +441,77 @@ class Gun(pygame.sprite.Sprite):
                 pos_x = player.rect.x if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
-                self.bullet = Bullet(bul_img, pos_x, pos_y, damage=player.damage,
+                self.bullet = Bullet(drop_img, pos_x, pos_y, damage=player.damage,
                                      speed_x=(5 * player.direction), speed_y=0, gravitated=False, timer=1)
-                # print("bang")
                 self.shoot_cooldown = 1
 
+        elif weapons_info[first_weapon][3] == 'on suppression':
+            if self.equipped and self.shoot_cooldown == 0:
+                pos_x = player.rect.x if player.direction < 0 \
+                    else player.rect.x + player.rect.w
+                pos_y = player.rect.y
+                self.bullet = Bullet(fire_img, pos_x, pos_y, damage=player.damage,
+                                     speed_x=(5 * player.direction), speed_y=-1.5, gravitated=True, timer=1)
+                self.shoot_cooldown = 0
 
-class Bullet(AnimatedSprite):
+
+class Bullet(Sprite):
+    def __init__(self, img, pos_x, pos_y, damage, speed_x, speed_y, gravitated, timer):
+        super().__init__(player_attacks)
+        self.image = pygame.transform.scale(img, (cell_w, cell_h))
+        self.rect = self.image.get_rect().move(pos_x, pos_y)
+        level_sprites[room_number][1].append(self)
+        self.rect.x = pos_x
+        self.rect.y = pos_y
+        self.speed_x = speed_x
+        self.speed_y = speed_y
+        self.timer = timer
+        self.damage = damage
+        self.direction = -1
+        if self.speed_x == 0:
+            self.rotate(player.direction)
+        self.gravitated = gravitated
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def kill(self):
+        super().kill()
+        if self in level_sprites[room_number][1]:
+            level_sprites[room_number][1].remove(self)
+
+    def update(self):
+        super().update()
+        #if pygame.sprite.collide_mask(self, all_sprites):
+        #    self.kill()
+        if self.timer > 0:
+            self.timer -= 1 / fps
+        else:
+            self.kill()
+
+        if self.speed_x > 0:
+            new_dir = 1
+        elif self.speed_x < 0:
+            new_dir = -1
+        else:
+            new_dir = 0
+        self.rotate(new_dir)
+        if self.gravitated:
+            self.speed_y += gravity
+        self.rect.x += self.speed_x
+        self.rect.y += self.speed_y
+
+    def rotate(self, new_dir):
+        if new_dir and new_dir != self.direction:
+            flip_x = True
+            flip_y = False
+            self.direction = new_dir
+            self.image = pygame.transform.flip(self.image, flip_x, flip_y)
+        if self.direction == 1:
+            self.reversed = True
+        elif self.direction == -1:
+            self.reversed = False
+
+
+class Bullet_A(AnimatedSprite):
     def __init__(self, img, pos_x, pos_y, damage, speed_x, speed_y, gravitated, timer):
         super().__init__(img, 5, 1, pos_x, pos_y, player_attacks)
         self.image = pygame.transform.scale(img, (cell_w, cell_h))
@@ -617,12 +632,8 @@ class Creature(pygame.sprite.Sprite):
 
     def kill(self):
         super().kill()
-        if self.__class__ == Player:
-            pass
-            #death_screen()
         if self in level_sprites[room_number][1]:
             level_sprites[room_number][1].remove(self)
-
 
     def update(self):
         # умирание
@@ -771,7 +782,7 @@ class Player(Creature):
     def update(self):
         super().update()
         if self.weapon:
-            self.damage = weapons_info[first_weapon][1]
+            self.damage, self.move_speed = weapons_info[first_weapon][1], weapons_info[first_weapon][2] * self.move_speed
             self.weapon.update()
             self.weapon.pos_x = self.rect.x
             self.weapon.pos_y = self.rect.y
@@ -788,19 +799,20 @@ if __name__ == '__main__':
     player_w = cell_w
     gravity = 0.1
 
-    #whorizontal_borders = pygame.sprite.Group()
-    #vertical_borders = pygame.sprite.Group()
+    horizontal_borders = pygame.sprite.Group()
+    vertical_borders = pygame.sprite.Group()
 
     pygame.init()
     screen = pygame.display.set_mode(size)
     screen.fill(pygame.Color("black"))
     clock = pygame.time.Clock()
     fps = 60
-    player_img = load_image('mar.png')
-    enemy_img = load_image('box.png')
+    player_img = load_image('player.png')
+    enemy_img = load_image('worker1.png')
     bul_img = load_image('hit_sheet.png')
+    drop_img = load_image('drop.png', -1)
+    fire_img = load_image('fire.png', -1)
     melee_img = load_image("hit.png")
-    wall_img = load_image('box.png')
     heart_image = load_image("small_heart.png")
     first_weapon = 'empty'
     second_weapon = 'empty'
@@ -810,15 +822,16 @@ if __name__ == '__main__':
         'empty': load_image('grass.png')
     }
     weapons_info = {
-        'empty': [load_image('empty.png', -1), 0, 1, 'melee'],
-        'spoon': [load_image('spoon.png'), 1, 1, 'melee'],
-        'syringe': [load_image('syringe.png'), 5, 1, 'long-range']
+        'empty': [load_image('empty.png'), 0, 1, 'melee'],
+        'spoon': [load_image('spoon.png'), 3, 1, 'melee'],
+        'syringe': [load_image('syringe.png'), 3, 1, 'long-range'],
+        'broken extinguisher': [load_image('fire_extinguisher.png'), 0.05, 1, 'on suppression']
     }
     chests_images = {
         "closed": load_image('closed_chest.png'),
         "open": load_image('opened_chest.png')
     }
-    weapons = ['spoon', 'syringe']
+    weapons = ['spoon', 'syringe', 'broken extinguisher']
     doors_images = {
         0: load_image("green_door.png"),
         1: load_image("door_1.png"),
@@ -908,6 +921,10 @@ if __name__ == '__main__':
                     if not paused:
                         paused = True
                     else:
+                        paused = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if paused:
+                    if 320 > event.pos[0] > 0 and 100 > event.pos[1] > 50:
                         paused = False
 
         if not paused:
