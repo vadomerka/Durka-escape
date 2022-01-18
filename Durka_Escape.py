@@ -461,7 +461,7 @@ class Gun(pygame.sprite.Sprite):
                 pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
-                self.bullet = Bullet(bul_img, pos_x, pos_y, damage=self.damage * player.damage_boost,
+                self.bullet = Bullet(bul_img, pos_x, pos_y, damage=self.damage,
                                      speed_x=(0 * player.direction), speed_y=0, gravitated=False,
                                      timer=0.1)
                 self.shoot_cooldown = 1
@@ -471,7 +471,7 @@ class Gun(pygame.sprite.Sprite):
                 pos_x = player.rect.x if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
-                self.bullet = Bullet(bul_img, pos_x, pos_y, damage=self.damage * player.damage_boost,
+                self.bullet = Bullet(bul_img, pos_x, pos_y, damage=self.damage,
                                      speed_x=(5 * player.direction), speed_y=0, gravitated=False,
                                      timer=1)
                 # print("bang")
@@ -550,7 +550,7 @@ class Wall(Sprite):
 
 
 class Creature(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, img, size_x, size_y, health=100, damage_boost=1, speed=2):
+    def __init__(self, pos_x, pos_y, img, size_x, size_y, health=100, damage=1, speed=2):
         super().__init__(all_sprites, creature_group)
         self.image = pygame.transform.scale(img, (size_x, size_y))
         self.rect = self.image.get_rect().move(
@@ -559,7 +559,7 @@ class Creature(pygame.sprite.Sprite):
         self.speed_y = 0
         self.max_health = health
         self.health = health
-        self.damage_boost = damage_boost
+        self.damage = damage
         self.move_speed = speed
         self.direction = -1
         self.pos = (pos_x, pos_y)
@@ -738,7 +738,7 @@ class Enemy(Creature):
 
 class Player(Creature):
     def __init__(self, pos_x, pos_y, img):
-        super().__init__(pos_x, pos_y, img, cell_w, cell_h * 2, damage_boost=1, speed=5)
+        super().__init__(pos_x, pos_y, img, cell_w, cell_h * 2, damage=0, speed=5)
         self.first_weapon = None
         self.second_weapon = None
         self.stats = [0, 0]
