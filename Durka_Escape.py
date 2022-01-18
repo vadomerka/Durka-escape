@@ -386,26 +386,28 @@ class Gun(pygame.sprite.Sprite):
 
     def equip(self):
         global level_sprites, room_number
-        if player.first_weapon:
-            if self in level_sprites[room_number][1]:
-                level_sprites[room_number][1].remove(self)  # удаляем новое из мира
-                level_sprites[room_number][1].append(player.first_weapon)  # выкидываем старое в мир
-                level_sprites[room_number][1][-1].speed_x = \
-                    random.randint(-self.move_speed, self.move_speed)  # рандомная скорость старому
-                level_sprites[room_number][1][-1].equipped = False
-                level_sprites[room_number][1][-1].speed_y = -level_sprites[room_number][1][-1].move_speed
-                level_sprites[room_number][1][-1].image = \
-                    pygame.transform.scale(weapons_info[level_sprites[room_number][1][-1].type][0],
-                                           (cell_w, cell_h))
-                level_sprites[room_number][1][-1].rect = \
-                    level_sprites[room_number][1][-1].image.get_rect().move(
-                        cell_w * self.pos_x, cell_h * self.pos_y)
-                player.first_weapon = self  # кладем новое на место старого
-        else:
-            if self in level_sprites[room_number][1]:
-                level_sprites[room_number][1].remove(self)  # удаляем новое из мира
-                player.first_weapon = self  # кладем новое на пустое место
-        self.equipped = True
+        if not player.second_weapon or \
+                (player.second_weapon and player.second_weapon.type != self.type):
+            if player.first_weapon:
+                if self in level_sprites[room_number][1]:
+                    level_sprites[room_number][1].remove(self)  # удаляем новое из мира
+                    level_sprites[room_number][1].append(player.first_weapon)  # выкидываем старое в мир
+                    level_sprites[room_number][1][-1].speed_x = \
+                        random.randint(-self.move_speed, self.move_speed)  # рандомная скорость старому
+                    level_sprites[room_number][1][-1].equipped = False
+                    level_sprites[room_number][1][-1].speed_y = -level_sprites[room_number][1][-1].move_speed
+                    level_sprites[room_number][1][-1].image = \
+                        pygame.transform.scale(weapons_info[level_sprites[room_number][1][-1].type][0],
+                                               (cell_w, cell_h))
+                    level_sprites[room_number][1][-1].rect = \
+                        level_sprites[room_number][1][-1].image.get_rect().move(
+                            cell_w * self.pos_x, cell_h * self.pos_y)
+                    player.first_weapon = self  # кладем новое на место старого
+            else:
+                if self in level_sprites[room_number][1]:
+                    level_sprites[room_number][1].remove(self)  # удаляем новое из мира
+                    player.first_weapon = self  # кладем новое на пустое место
+            self.equipped = True
         # player.stats = [self.damage, self.attack_speed]
 
     def collide(self):
