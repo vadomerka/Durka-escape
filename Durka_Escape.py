@@ -101,9 +101,15 @@ def generate_level(lev, filename):
     # print(level_sprites)
 
 
+def win_screen():
+    print("you win")
+
+
 def next_level():
     global all_sprites, player_group, player, room_number, level_map, room_maps, level_sprites, \
         creature_group, doors_group, only_player_group, player_attacks, chests_group, stage
+    if stage == 1:
+        win_screen()
     stage += 1
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
@@ -776,6 +782,7 @@ if __name__ == '__main__':
         "F": load_image("exit_door.png"),
     }
 
+    # start game
     stage = 0
 
     all_sprites = SpriteGroup()
@@ -794,26 +801,27 @@ if __name__ == '__main__':
     while running:
         screen.fill((0, 0, 0))
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            player.movement("y", "up")
-        if keys[pygame.K_a]:
-            player.movement("x", "left")
-        if keys[pygame.K_d]:
-            player.movement("x", "right")
-        if keys[pygame.K_s]:
-            player.movement("y", "down")
-        if not (keys[pygame.K_a] or keys[pygame.K_d]):  # если юзер не двигается по х, тогда стоп
-            player.movement("x", "stop")
+        if not paused:
+            if keys[pygame.K_w]:
+                player.movement("y", "up")
+            if keys[pygame.K_a]:
+                player.movement("x", "left")
+            if keys[pygame.K_d]:
+                player.movement("x", "right")
+            if keys[pygame.K_s]:
+                player.movement("y", "down")
+            if not (keys[pygame.K_a] or keys[pygame.K_d]):  # если юзер не двигается по х, тогда стоп
+                player.movement("x", "stop")
 
-        mouse_pressed = pygame.mouse.get_pressed()
-        if mouse_pressed[0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
-            player.attack()
+            mouse_pressed = pygame.mouse.get_pressed()
+            if mouse_pressed[0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
+                player.attack()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_e:
+                if event.key == pygame.K_e and not paused:
                     # "Е" рядом с пистолетом
                     # берем все пистолеты в комнате
                     gun_group = pygame.sprite.Group(list(filter(lambda obj: isinstance(obj, Gun),
@@ -849,11 +857,10 @@ if __name__ == '__main__':
                         if near_chests:
                             near_chests[-1].open()
                 # замена оружия на второстепенное
-                if event.key == pygame.K_q:
+                if event.key == pygame.K_q and not paused:
                         first_weapon, second_weapon = second_weapon, first_weapon
                 # пауза
                 if event.key == pygame.K_ESCAPE:
-                    print('esc')
                     if not paused:
                         paused = True
                     else:
