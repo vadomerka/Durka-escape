@@ -3,11 +3,7 @@ import sys
 import random
 import pygame
 
-cell_h = cell_w = 50
-size = width, height = 1000, 800
-player_h = cell_h * 2
-player_w = cell_w
-gravity = 0.1
+
 creature_group = pygame.sprite.Group()
 doors_group = pygame.sprite.Group()
 only_player_group = pygame.sprite.Group()
@@ -125,6 +121,24 @@ def next_level():
     only_player_group.add(player)
 
 
+def restart_level():
+    global all_sprites, player_group, player, room_number, level_map, room_maps, level_sprites, \
+        creature_group, doors_group, only_player_group, player_attacks, chests_group, stage
+    all_sprites = SpriteGroup()
+    player_group = SpriteGroup()
+    creature_group = pygame.sprite.Group()
+    doors_group = pygame.sprite.Group()
+    only_player_group = pygame.sprite.Group()
+    player_attacks = pygame.sprite.Group()
+    chests_group = pygame.sprite.Group()
+    room_number = 0
+    level_map = load_level('room 0')
+    room_maps = [0] * 9
+    level_sprites = [0] * 9
+    generate_level(level_map, 'room 0')
+    only_player_group.add(player)
+
+
 def draw_interface():
     global weapons_info
     for hp in range(0, player.health, 5):
@@ -170,6 +184,39 @@ def start_screen():
 
         pygame.display.flip()
         clock.tick(fps)
+
+
+def death_screen():
+    intro_text = ["Начать игру", "",
+                  "",
+                  "Новая игра"]
+
+    fon = pygame.transform.scale(load_image('Каневский_злится.jpg'), (screen.get_size()))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 50)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if 210 > event.pos[0] > 0 and 100 > event.pos[1] > 50:
+                    restart_level()
+                    return
+                if event.pos[0] and event.pos[1]:
+                    pass
+                print(event.pos)
+
+        pygame.display.flip()
 
 
 class SpriteGroup(pygame.sprite.Group):
@@ -298,7 +345,7 @@ class Gun(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(weapons_info[self.type][0], (cell_w, cell_h))
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
-        self.shoot_cooldown = 0
+        self.shoot_cooldown = weapons_info[self.type][2]
         self.bullet = None
         self.move_speed = 2
         self.speed_x = random.randint(-self.move_speed, self.move_speed)
@@ -772,8 +819,8 @@ if __name__ == '__main__':
     player_w = cell_w
     gravity = 0.1
 
-    horizontal_borders = pygame.sprite.Group()
-    vertical_borders = pygame.sprite.Group()
+    #whorizontal_borders = pygame.sprite.Group()
+    #vertical_borders = pygame.sprite.Group()
 
     pygame.init()
     screen = pygame.display.set_mode(size)
@@ -794,7 +841,7 @@ if __name__ == '__main__':
         'empty': load_image('grass.png')
     }
     weapons_info = {
-        'empty': [load_image('empty.png'), 0, 1, 'melee'],
+        'empty': [load_image('empty.png', -1), 0, 1, 'melee'],
         'spoon': [load_image('spoon.png'), 1, 1, 'melee'],
         'syringe': [load_image('syringe.png'), 5, 1, 'long-range']
     }
@@ -811,7 +858,6 @@ if __name__ == '__main__':
         "F": load_image("exit_door.png"),
     }
 
-    # start game
     stage = 0
 
     all_sprites = SpriteGroup()
