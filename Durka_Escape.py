@@ -3,7 +3,6 @@ import sys
 import random
 import pygame
 
-
 cell_h = cell_w = 50
 size = width, height = 1000, 800
 player_h = cell_h * 2
@@ -130,12 +129,13 @@ def draw_interface():
     global weapons_info
     for hp in range(0, player.health, 5):
         screen.blit(heart_image, (hp * 5, 0))
-    screen.blit(pygame.transform.scale(invent_image, (cell_w * 3, cell_h * 3)), (width - cell_w * 3, cell_h))
-    if first_weapon:
-        screen.blit(pygame.transform.scale(weapons_info[first_weapon][0],
+    screen.blit(pygame.transform.scale(invent_image, (cell_w * 3, cell_h * 3)),
+                (width - cell_w * 3, cell_h))
+    if player.first_weapon:
+        screen.blit(pygame.transform.scale(weapons_info[player.first_weapon.type][0],
                                            (cell_w * 3, cell_h * 3)), (width - cell_w * 3, cell_h))
-    if second_weapon:
-        screen.blit(pygame.transform.scale(weapons_info[second_weapon][0],
+    if player.second_weapon:
+        screen.blit(pygame.transform.scale(weapons_info[player.second_weapon.type][0],
                                            (cell_w, cell_h)), (width - cell_w * 3, cell_h * 3))
 
 
@@ -278,11 +278,11 @@ class Chest(pygame.sprite.Sprite):
     def open(self):
         size_of_cap = 29
         if not self.opened:
-            weapon = 'empty'
-            while weapon == first_weapon or weapon == second_weapon:
-                weapon = random.choice(weapons)
+            # weapon = 'empty'
+            # while weapon == first_weapon or weapon == second_weapon:
+            weapon = random.choice(weapons)
             level_sprites[room_number][1].append(
-            Gun(self.rect.x // cell_w, (self.rect.y - self.rect.h) // cell_h, weapon))
+                Gun(self.rect.x // cell_w, (self.rect.y - self.rect.h) // cell_h, weapon))
             self.rect.y -= size_of_cap
         self.image = chests_images["open"]
         self.opened = True
@@ -318,6 +318,8 @@ class Gun(pygame.sprite.Sprite):
 
     def update(self):
         # print(self.rect.x)
+        self.pos_x = self.rect.x // cell_w
+        self.pos_y = self.rect.y // cell_h
         if self.equipped:
             self.rect.x = width - cell_w * 2.5
             self.rect.y = cell_h * 1.5
@@ -364,8 +366,10 @@ class Gun(pygame.sprite.Sprite):
 
     def draw_stats(self):
         intro_text = ["Wanna grab a " + self.type + "?",
-                      "             old stats: damage " + str(player.stats[0]) + ", speed " + str(player.stats[1]),
-                      "             new stats: damage " + str(self.damage) + ", speed " + str(self.attack_speed)]
+                      "             old stats: damage " + str(player.stats[0]) + ", speed " + str(
+                          player.stats[1]),
+                      "             new stats: damage " + str(self.damage) + ", speed " + str(
+                          self.attack_speed)]
 
         fon = pygame.transform.scale(self.image, (width * 0.8, height * 0.8))
         screen.blit(fon, (width * 0.1, height * 0.1))
@@ -382,11 +386,27 @@ class Gun(pygame.sprite.Sprite):
 
     def equip(self):
         global level_sprites, room_number
-        player.weapon = self
-        if self in level_sprites[room_number][1]:
-            level_sprites[room_number][1].remove(self)
+        if player.first_weapon:
+            if self in level_sprites[room_number][1]:
+                level_sprites[room_number][1].remove(self)  # удаляем новое из мира
+                level_sprites[room_number][1].append(player.first_weapon)  # выкидываем старое в мир
+                level_sprites[room_number][1][-1].speed_x = \
+                    random.randint(-self.move_speed, self.move_speed)  # рандомная скорость старому
+                level_sprites[room_number][1][-1].equipped = False
+                level_sprites[room_number][1][-1].speed_y = -level_sprites[room_number][1][-1].move_speed
+                level_sprites[room_number][1][-1].image = \
+                    pygame.transform.scale(weapons_info[level_sprites[room_number][1][-1].type][0],
+                                           (cell_w, cell_h))
+                level_sprites[room_number][1][-1].rect = \
+                    level_sprites[room_number][1][-1].image.get_rect().move(
+                        cell_w * self.pos_x, cell_h * self.pos_y)
+                player.first_weapon = self  # кладем новое на место старого
+        else:
+            if self in level_sprites[room_number][1]:
+                level_sprites[room_number][1].remove(self)  # удаляем новое из мира
+                player.first_weapon = self  # кладем новое на пустое место
         self.equipped = True
-        player.stats = [self.damage, self.attack_speed]
+        # player.stats = [self.damage, self.attack_speed]
 
     def collide(self):
         row1 = self.rect.y // cell_h + self.rect.h // cell_h
@@ -434,8 +454,8 @@ class Gun(pygame.sprite.Sprite):
             self.min_x = 0
 
     def shoot(self):
-        if weapons_info[first_weapon][3] == 'melee':
-            if self.equipped and self.shoot_cooldown == 0 and first_weapon != 'empty':
+        if weapons_info[self.type][3] == 'melee':
+            if self.equipped and self.shoot_cooldown == 0:
                 pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
@@ -444,13 +464,14 @@ class Gun(pygame.sprite.Sprite):
                                      timer=0.1)
                 self.shoot_cooldown = 1
 
-        elif weapons_info[first_weapon][3] == 'long-range':
+        elif weapons_info[self.type][3] == 'long-range':
             if self.equipped and self.shoot_cooldown == 0:
                 pos_x = player.rect.x if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
                 self.bullet = Bullet(bul_img, pos_x, pos_y, damage=player.damage,
-                                     speed_x=(5 * player.direction), speed_y=0, gravitated=False, timer=1)
+                                     speed_x=(5 * player.direction), speed_y=0, gravitated=False,
+                                     timer=1)
                 # print("bang")
                 self.shoot_cooldown = 1
 
@@ -628,8 +649,7 @@ class Creature(pygame.sprite.Sprite):
         col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
         if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
                 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
-                level[row1][col1] == '#' or \
-                level[row2][col2] == '#':
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
             self.min_y = (self.rect.y // cell_h) * cell_h
         else:
             self.min_y = height - self.rect.height
@@ -639,8 +659,7 @@ class Creature(pygame.sprite.Sprite):
         col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
         if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
                 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
-                level[row1][col1] == '#' or \
-                level[row2][col2] == '#':
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
             self.max_y = self.rect.y // cell_h * cell_h
             self.speed_y = 0
             self.rect.y = self.max_y + cell_h
@@ -652,8 +671,7 @@ class Creature(pygame.sprite.Sprite):
         col2 = self.rect.x // cell_w + self.rect.w // cell_w
         if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
                 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
-                level[row1][col1] == '#' or \
-                level[row2][col2] == '#':
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
             self.max_x = self.rect.x
         else:
             self.max_x = width - player_w
@@ -663,8 +681,7 @@ class Creature(pygame.sprite.Sprite):
         col2 = self.rect.x // cell_w
         if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
                 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
-                level[row1][col1] == '#' or \
-                level[row2][col2] == '#':
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
             self.min_x = self.rect.x
             self.rect.x += 1
         else:
@@ -720,20 +737,30 @@ class Enemy(Creature):
 class Player(Creature):
     def __init__(self, pos_x, pos_y, img):
         super().__init__(pos_x, pos_y, img, cell_w, cell_h * 2, damage=0, speed=5)
-        self.weapon = None
+        self.first_weapon = None
+        self.second_weapon = None
         self.stats = [0, 0]
 
     def update(self):
         super().update()
-        if self.weapon:
-            self.damage, self.move_speed = weapons_info[first_weapon][1], weapons_info[first_weapon][2] * self.move_speed
-            self.weapon.update()
-            self.weapon.pos_x = self.rect.x
-            self.weapon.pos_y = self.rect.y
+        if self.first_weapon:
+            # self.damage, self.move_speed = weapons_info[first_weapon][1], weapons_info[first_weapon][2] * self.move_speed
+            self.first_weapon.update()
+            self.first_weapon.pos_x = self.rect.x
+            self.first_weapon.pos_y = self.rect.y
+        if self.second_weapon:
+            # self.damage, self.move_speed = weapons_info[first_weapon][1], weapons_info[first_weapon][2] * self.move_speed
+            self.second_weapon.update()
+            self.second_weapon.pos_x = self.rect.x
+            self.second_weapon.pos_y = self.rect.y
 
-    def attack(self):
-        if self.weapon:
-            self.weapon.shoot()
+    def left_attack(self):
+        if self.first_weapon:
+            self.first_weapon.shoot()
+
+    def right_attack(self):
+        if self.second_weapon:
+            self.second_weapon.shoot()
 
 
 if __name__ == '__main__':
@@ -814,8 +841,11 @@ if __name__ == '__main__':
                 player.movement("x", "stop")
 
             mouse_pressed = pygame.mouse.get_pressed()
-            if mouse_pressed[0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
-                player.attack()
+            if mouse_pressed[0]:
+                # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
+                player.left_attack()
+            elif mouse_pressed[1]:
+                player.right_attack()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -832,12 +862,6 @@ if __name__ == '__main__':
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(gun_group)))
                         if equipable_entities:
                             equipable_entities[-1].equip()
-                            if first_weapon == 'empty':
-                                first_weapon = equipable_entities[-1].type
-                                print(first_weapon)
-                            elif first_weapon and second_weapon == 'empty' and first_weapon != equipable_entities[-1].type:
-                                second_weapon = equipable_entities[-1].type
-                                print(second_weapon)
                     # "Е" рядом с дверью
                     if pygame.sprite.spritecollideany(player, doors_group):
                         door_group = pygame.sprite.Group(
@@ -849,16 +873,16 @@ if __name__ == '__main__':
                             near_doors[-1].enter()
                     # "Е" рядом с сундуком
                     if pygame.sprite.spritecollideany(player, chests_group):
-                        door_group = pygame.sprite.Group(
-                            list(filter(lambda obj: isinstance(obj, Chest),
-                                        level_sprites[room_number][1])))
+                        chest_group = pygame.sprite.Group(
+                            list(filter(lambda obj: isinstance(obj, Chest) and not obj.opened,
+                                        level_sprites[room_number][0])))  # 0 - потому что сундук на заднем фоне
                         near_chests = list(filter(
-                            lambda obj: pygame.sprite.collide_mask(player, obj), list(chests_group)))
+                            lambda obj: pygame.sprite.collide_mask(player, obj), list(chest_group)))
                         if near_chests:
                             near_chests[-1].open()
                 # замена оружия на второстепенное
                 if event.key == pygame.K_q and not paused:
-                        first_weapon, second_weapon = second_weapon, first_weapon
+                    player.first_weapon, player.second_weapon = player.second_weapon, player.first_weapon
                 # пауза
                 if event.key == pygame.K_ESCAPE:
                     if not paused:
