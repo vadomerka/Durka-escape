@@ -863,7 +863,7 @@ if __name__ == '__main__':
     invent_image = load_image('рамка.png')
     tile_images = {
         'wall': load_image('box.png'),
-        'empty': load_image('grass.png')
+        'empty': load_image('yellow wall.jpg')
     }
     weapons_info = {
         'empty': [load_image('empty.png'), 0, 1, 'melee'],
