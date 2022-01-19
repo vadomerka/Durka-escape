@@ -65,9 +65,9 @@ def generate_level(lev, filename):
                 background.append((Wall, "empty", x, y))
                 new_player = x, y
                 lev[y][x] = "."
-            elif lev[y][x] == 'X':
+            elif lev[y][x] in enemies:
                 background.append((Wall, "empty", x, y))
-                front.append((Enemy, x, y, enemy_img))
+                front.append((Enemy, x, y, lev[y][x]))
             elif lev[y][x] == 'W':
                 background.append((Wall, "empty", x, y))
                 front.append((Gun, x, y, random.choice(weapons)))
@@ -443,7 +443,7 @@ class Gun(pygame.sprite.Sprite):
                 pos_y = player.rect.y
                 self.bullet = Bullet(drop_img, pos_x, pos_y, damage=player.damage,
                                      speed_x=(5 * player.direction), speed_y=0, gravitated=False, timer=1)
-                self.shoot_cooldown = 1
+                self.shoot_cooldown = 0.3
 
         elif weapons_info[first_weapon][3] == 'on suppression':
             if self.equipped and self.shoot_cooldown == 0:
@@ -452,7 +452,7 @@ class Gun(pygame.sprite.Sprite):
                 pos_y = player.rect.y
                 self.bullet = Bullet(fire_img, pos_x, pos_y, damage=player.damage,
                                      speed_x=(5 * player.direction), speed_y=-1.5, gravitated=True, timer=1)
-                self.shoot_cooldown = 0
+                self.shoot_cooldown = 0.1
 
 
 class Bullet(Sprite):
@@ -725,11 +725,29 @@ class Creature(pygame.sprite.Sprite):
             self.rect.x += 1
         else:
             self.min_x = 0
+        if self.__class__ == Enemy:
+            row2 = self.rect.y // cell_h + self.rect.h // cell_h
+            if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                    0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                    level[row2][col2 + 1] == '.' and \
+                    level[row2][col2 - 1] == '.':
+                self.AI(False, False, True)
+            elif 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                    0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                    level[row2][col2 + 1] == '.':
+                self.AI(False, True)
+            elif 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                    0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                    level[row2][col2] == '.':
+                self.AI(True, False)
 
 
 class Enemy(Creature):
-    def __init__(self, pos_x, pos_y, img):
-        super().__init__(pos_x, pos_y, img, cell_w, cell_h * 2)
+    def __init__(self, pos_x, pos_y, name):
+        super().__init__(pos_x, pos_y, enemy_images[name][0], cell_w, cell_h * 2, enemy_images[name][1], enemy_images[name][2])
+        #print(enemy_images[name][1])
+        self.time = 0
+        self.frames_count = 1
 
     def movement(self, line, direction="up"):
         if line == "x":
@@ -751,18 +769,27 @@ class Enemy(Creature):
             screen.blit(pygame.transform.scale(heart_image, (hp_size, hp_size)),
                         (start_of_bar + hp, self.rect.y - hp_size * 2))
 
-    def AI(self):
-        direction = random.randint(0, 3)
-        if direction <= 1:
-            self.movement("x", "left")
-        elif direction <= 2:
-            self.movement("x", "stop")
+    def AI(self, free_r=False, free_l=False, stop=False):
+        if free_l:
+            direction = 1
+        elif free_r:
+            direction = 2
+        elif stop:
+            direction = 0
         else:
+            direction = random.randint(0, 2)
+        if direction == 1:
+            self.movement("x", "left")
+        elif direction == 2:
             self.movement("x", "right")
+        else:
+            self.movement("x", "stop")
 
     def update(self):
         super().update()
-        # self.AI()
+        if self.time % (fps // self.frames_count) == 0:
+            self.AI()
+        self.time = (self.time + 1) % fps
         self.draw_hp()
         if pygame.sprite.collide_mask(self, player):
             player.health -= self.damage
@@ -825,7 +852,7 @@ if __name__ == '__main__':
         'empty': [load_image('empty.png'), 0, 1, 'melee'],
         'spoon': [load_image('spoon.png'), 3, 1, 'melee'],
         'syringe': [load_image('syringe.png'), 3, 1, 'long-range'],
-        'broken extinguisher': [load_image('fire_extinguisher.png'), 0.05, 1, 'on suppression']
+        'broken extinguisher': [load_image('fire_extinguisher.png'), 0.3, 1, 'on suppression']
     }
     chests_images = {
         "closed": load_image('closed_chest.png'),
@@ -839,6 +866,11 @@ if __name__ == '__main__':
         3: load_image("door_3.png"),
         "F": load_image("exit_door.png"),
     }
+    enemy_images = {
+        'X': [load_image('worker1.png'), 100, 1],
+        'S': [load_image('security.png'), 200, 10]
+    }
+    enemies = ['X', 'S']
 
     stage = 0
 
