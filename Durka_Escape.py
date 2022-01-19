@@ -436,7 +436,6 @@ class Gun(pygame.sprite.Sprite):
 
     def shoot(self):
         if weapons_info[self.type][3] == 'melee':
-            print("m")
             if self.equipped and self.shoot_cooldown == 0 and first_weapon != 'empty':
                 pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                     else player.rect.x + player.rect.w
@@ -447,7 +446,6 @@ class Gun(pygame.sprite.Sprite):
                 self.shoot_cooldown = 1
 
         elif weapons_info[self.type][3] == 'long-range':
-            print("l")
             if self.equipped and self.shoot_cooldown == 0:
                 pos_x = player.rect.x if player.direction < 0 \
                     else player.rect.x + player.rect.w
@@ -457,7 +455,6 @@ class Gun(pygame.sprite.Sprite):
                 self.shoot_cooldown = 0.3
 
         elif weapons_info[self.type][3] == 'on suppression':
-            print("s")
             if self.equipped and self.shoot_cooldown == 0:
                 pos_x = player.rect.x if player.direction < 0 \
                     else player.rect.x + player.rect.w
@@ -925,8 +922,6 @@ if __name__ == '__main__':
             mouse_pressed = pygame.mouse.get_pressed()
             if mouse_pressed[0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
                 player.left_attack()
-            if mouse_pressed[2]:
-                player.right_attack()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
