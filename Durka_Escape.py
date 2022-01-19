@@ -436,7 +436,7 @@ class Gun(pygame.sprite.Sprite):
 
     def shoot(self):
         if weapons_info[self.type][3] == 'melee':
-            if self.equipped and self.shoot_cooldown == 0 and first_weapon != 'empty':
+            if self.equipped and self.shoot_cooldown == 0:
                 pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
