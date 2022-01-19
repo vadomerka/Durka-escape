@@ -435,31 +435,34 @@ class Gun(pygame.sprite.Sprite):
             self.min_x = 0
 
     def shoot(self):
-        if weapons_info[first_weapon][3] == 'melee':
+        if weapons_info[self.type][3] == 'melee':
+            print("m")
             if self.equipped and self.shoot_cooldown == 0 and first_weapon != 'empty':
                 pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
-                self.bullet = Bullet_A(bul_img, pos_x, pos_y, damage=player.damage,
+                self.bullet = Bullet_A(bul_img, pos_x, pos_y, damage=self.damage,
                                      speed_x=(0 * player.direction), speed_y=0, gravitated=False,
                                      timer=0.1)
                 self.shoot_cooldown = 1
 
-        elif weapons_info[first_weapon][3] == 'long-range':
+        elif weapons_info[self.type][3] == 'long-range':
+            print("l")
             if self.equipped and self.shoot_cooldown == 0:
                 pos_x = player.rect.x if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
-                self.bullet = Bullet(drop_img, pos_x, pos_y, damage=player.damage,
+                self.bullet = Bullet(drop_img, pos_x, pos_y, damage=self.damage,
                                      speed_x=(5 * player.direction), speed_y=0, gravitated=False, timer=1)
                 self.shoot_cooldown = 0.3
 
-        elif weapons_info[first_weapon][3] == 'on suppression':
+        elif weapons_info[self.type][3] == 'on suppression':
+            print("s")
             if self.equipped and self.shoot_cooldown == 0:
                 pos_x = player.rect.x if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
-                self.bullet = Bullet(fire_img, pos_x, pos_y, damage=player.damage,
+                self.bullet = Bullet(fire_img, pos_x, pos_y, damage=self.damage,
                                      speed_x=(5 * player.direction), speed_y=-1.5, gravitated=True, timer=1)
                 self.shoot_cooldown = 0.1
 
@@ -921,10 +924,8 @@ if __name__ == '__main__':
 
             mouse_pressed = pygame.mouse.get_pressed()
             if mouse_pressed[0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
-                pass
                 player.left_attack()
             if mouse_pressed[2]:
-                pass
                 player.right_attack()
 
         for event in pygame.event.get():
