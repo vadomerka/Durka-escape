@@ -996,7 +996,6 @@ class Enemy(Creature):
         super().__init__(pos_x, pos_y, enemy_images[name][0], cell_w, cell_h * 2,
                          enemy_images[name][1] * (stage + 1), enemy_images[name][2])
         self.time = 0
-        self.frames_count = 1
 
     def movement(self, line, direction="up"):
         if line == "x":
@@ -1030,7 +1029,12 @@ class Enemy(Creature):
         elif stop:
             direction = 0
         else:
-            direction = random.randint(0, 2)
+            if self.rect.x >= player.rect.x:
+                direction = 1
+            elif self.rect.x <= player.rect.x:
+                direction = 2
+            else:
+                direction = 0
         if direction == 1:
             self.movement("x", "left")
         elif direction == 2:
@@ -1040,12 +1044,12 @@ class Enemy(Creature):
 
     def update(self):
         super().update()
-        if self.time % (fps // self.frames_count) == 0:
+        if self.time == 0:
             self.AI()
         self.time = (self.time + 1) % fps
         self.draw_hp()
         if pygame.sprite.collide_mask(self, player):
-            player.health -= 0 # self.damage
+            player.health -= self.damage
         for obj in player_attacks:
             if pygame.sprite.collide_mask(self, obj):
                 self.health -= obj.damage
