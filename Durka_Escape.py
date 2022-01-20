@@ -38,7 +38,7 @@ def load_image(name, colorkey=None):
 
 
 def load_level(filename):
-    filename = f"data/levels/stage {str(stage)}/{filename}"
+    filename = f"data/levels/stage {str(stage)}/{filename}/{1}"
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
         l_m = [li.strip() for li in mapFile]
@@ -74,6 +74,9 @@ def generate_level(lev, filename):
             elif lev[y][x] == 'C':
                 background.append((Wall, "empty", x, y))
                 background.append((Chest, chests_images["closed"], x, y))
+            elif lev[y][x] == "H":
+                background.append((Wall, "empty", x, y))
+                front.append((Heal, x, y, "пирожок"))
             elif lev[y][x] == "F":
                 background.append((Wall, "empty", x, y))
                 front.append((Exit, (x, y), (cell_w * 2, cell_h * 2), lev[y][x]))
@@ -365,6 +368,121 @@ class Chest(pygame.sprite.Sprite):
         self.opened = True
 
 
+class Heal(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, type):
+        # global player_group
+        super().__init__(player_group)
+        self.type = type
+        self.heal = heals_info[self.type]["heal"]
+        self.image = pygame.transform.scale(heals_info[self.type]["img"], (cell_w, cell_h))
+        self.rect = self.image.get_rect().move(
+            cell_w * pos_x, cell_h * pos_y)
+        self.move_speed = 2
+        self.speed_y = -self.move_speed
+
+        self.mask = pygame.mask.from_surface(self.image)
+        self.near_player = False
+        self.plat = False
+        self.min_y = height - self.rect.h
+        self.max_y = 0
+        self.max_x = width - self.rect.w
+        self.min_x = 0
+
+    def update(self):
+        self.collide()
+        if self.rect.y == self.min_y:
+            self.plat = True
+            self.speed_y -= gravity
+        else:
+            self.plat = False
+        if self.plat:
+            self.speed_y = 0
+        self.rect.x += self.speed_x
+        self.rect.y += self.speed_y
+        if self.rect.x >= self.max_x:
+            self.rect.x = self.max_x
+        if self.rect.x <= self.min_x:
+            self.rect.x = self.min_x
+        if self.rect.y >= self.min_y:
+            self.rect.y = self.min_y
+        if self.rect.y <= self.max_y:
+            self.rect.y = self.max_y
+
+        if pygame.sprite.collide_mask(self, player):
+            self.draw_stats()
+            self.near_player = True
+        else:
+            self.near_player = False
+
+    def draw_stats(self):
+        text = ["Wanna grab a " + self.type + "?",
+                "             +hp " + str(self.heal)]
+        fn = pygame.transform.scale(self.image, (width * 0.8, height * 0.8))
+        screen.blit(fn, (width * 0.1, height * 0.1))
+        fnt = pygame.font.Font(None, 30)
+        text_cord = 50
+        for lin in text:
+            string_render = fnt.render(lin, 1, pygame.Color('white'))
+            int_rect = string_render.get_rect()
+            text_cord += 10
+            int_rect.top = text_cord
+            int_rect.x = 10
+            text_cord += int_rect.height
+            screen.blit(string_render, int_rect)
+
+    def use(self):
+        player.health = player.health + self.heal
+        if player.health > player.max_health:
+            player.health = player.max_health
+        if self in level_sprites[room_number][1]:
+            level_sprites[room_number][1].remove(self)
+
+    def collide(self):
+        row1 = self.rect.y // cell_h + self.rect.h // cell_h
+        row2 = self.rect.y // cell_h + self.rect.h // cell_h
+        col1 = (self.rect.x + self.move_speed) // cell_w
+        col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
+            self.min_y = (self.rect.y // cell_h) * cell_h
+        else:
+            self.min_y = height - self.rect.height
+        row1 = self.rect.y // cell_h
+        col1 = (self.rect.x + self.move_speed) // cell_w
+        row2 = self.rect.y // cell_h
+        col2 = (self.rect.x + cell_w - self.move_speed) // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
+            self.max_y = self.rect.y // cell_h * cell_h
+            self.speed_y = 0
+            self.rect.y = self.max_y + cell_h
+        else:
+            self.max_y = 0
+        row1 = self.rect.y // cell_w
+        col1 = self.rect.x // cell_w + self.rect.w // cell_w
+        row2 = self.rect.y // cell_w + 1
+        col2 = self.rect.x // cell_w + self.rect.w // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
+            self.max_x = self.rect.x
+        else:
+            self.max_x = width - player_w
+        row1 = self.rect.y // cell_h
+        col1 = self.rect.x // cell_w
+        row2 = self.rect.y // cell_h + 1
+        col2 = self.rect.x // cell_w
+        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+                (level[row1][col1] == '#' or level[row2][col2] == '#'):
+            self.min_x = self.rect.x
+            self.rect.x += 1
+        else:
+            self.min_x = 0
+
+
 class Gun(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, type):
         # global player_group
@@ -396,9 +514,9 @@ class Gun(pygame.sprite.Sprite):
     def update(self):
         self.damage = weapons_info[self.type][1]
         if self.equipped:
-            self.rect.x = width - cell_w * 2.5
-            self.rect.y = cell_h * 1.5
-            self.image = pygame.transform.scale(self.image, (cell_w * 2, cell_h * 2))
+            # self.rect.x = width - cell_w * 2.5
+            # self.rect.y = cell_h * 1.5
+            # self.image = pygame.transform.scale(self.image, (cell_w * 2, cell_h * 2))
             if self.shoot_cooldown > 0:
                 self.shoot_cooldown -= (1 / fps)
             else:
@@ -469,8 +587,8 @@ class Gun(pygame.sprite.Sprite):
 
         if player.first_weapon:
             if player.first_weapon.type == self.type:
-                weapons_info[self.type][1] += 5
-                player.first_weapon.damage = weapons_info[self.type][1]
+                # weapons_info[self.type][1] += 5
+                player.first_weapon.damage += weapons_info[self.type][1]
 
         if not player.second_weapon or player.second_weapon.type != self.type:
             if player.first_weapon and player.first_weapon.type != self.type:
@@ -541,7 +659,8 @@ class Gun(pygame.sprite.Sprite):
                 pos_x = player.rect.x - player.rect.w if player.direction < 0 \
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
-                self.bullet = Bullet_A(bul_img, pos_x, pos_y, damage=self.damage,
+                self.bullet = Bullet_A(bul_img, row_sheet=5, col_sheet=1, pos_x=pos_x, pos_y=pos_y,
+                                       damage=self.damage,
                                        speed_x=(0 * player.direction), speed_y=0, gravitated=False,
                                        timer=0.1)
                 self.shoot_cooldown = 1
@@ -592,9 +711,6 @@ class Bullet(Sprite):
 
     def update(self):
         super().update()
-        # for obj in creature_group:
-        #    if pygame.sprite.collide_mask(self, obj):
-        #        self.kill()
         if self.timer > 0:
             self.timer -= 1 / fps
         else:
@@ -624,8 +740,9 @@ class Bullet(Sprite):
 
 
 class Bullet_A(AnimatedSprite):
-    def __init__(self, img, pos_x, pos_y, damage, speed_x, speed_y, gravitated, timer):
-        super().__init__(img, 5, 1, pos_x, pos_y, player_attacks)
+    def __init__(self, img, row_sheet=1, col_sheet=1, pos_x=0, pos_y=0, damage=1, speed_x=0,
+                 speed_y=0, gravitated=False, timer=1):
+        super().__init__(img, row_sheet, col_sheet, pos_x, pos_y, player_attacks)
         self.image = pygame.transform.scale(img, (cell_w, cell_h))
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         level_sprites[room_number][1].append(self)
@@ -986,6 +1103,12 @@ if __name__ == '__main__':
         'syringe': [load_image('syringe.png'), 10, 1, 'long-range'],
         'broken extinguisher': [load_image('fire_extinguisher.png'), 3, 1, 'on suppression']
     }
+    heals_info = {
+        "пирожок": {
+            "img": load_image("pie.png"),
+            "heal": 100
+        }
+    }
     chests_images = {
         "closed": load_image('closed_chest.png'),
         "open": load_image('opened_chest.png')
@@ -1001,7 +1124,7 @@ if __name__ == '__main__':
     }
     enemy_images = {
         'X': [load_image('worker1.png'), 100, 1],
-        'S': [load_image('security.png'), 150, 10]
+        'S': [load_image('security.png'), 150, 3]
     }
     enemies = ['X', 'S']
 
