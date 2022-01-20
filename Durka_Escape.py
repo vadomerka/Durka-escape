@@ -378,6 +378,7 @@ class Heal(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             cell_w * pos_x, cell_h * pos_y)
         self.move_speed = 2
+        self.speed_x = 0
         self.speed_y = -self.move_speed
 
         self.mask = pygame.mask.from_surface(self.image)
@@ -431,7 +432,7 @@ class Heal(pygame.sprite.Sprite):
             screen.blit(string_render, int_rect)
 
     def use(self):
-        player.health = player.health + self.heal
+        player.health += player.max_health * self.heal // 100
         if player.health > player.max_health:
             player.health = player.max_health
         if self in level_sprites[room_number][1]:
@@ -1106,7 +1107,7 @@ if __name__ == '__main__':
     heals_info = {
         "пирожок": {
             "img": load_image("pie.png"),
-            "heal": 100
+            "heal": 30
         }
     }
     chests_images = {
@@ -1197,6 +1198,15 @@ if __name__ == '__main__':
                             lambda obj: pygame.sprite.collide_mask(player, obj), list(chest_group)))
                         if near_chests:
                             near_chests[-1].open()
+
+                    if pygame.sprite.spritecollideany(player, player_group):
+                        heals_group = pygame.sprite.Group(
+                            list(filter(lambda obj: isinstance(obj, Heal),
+                                        level_sprites[room_number][1])))
+                        near_heals = list(filter(
+                            lambda obj: pygame.sprite.collide_mask(player, obj), list(heals_group)))
+                        if near_heals:
+                            near_heals[-1].use()
                 # замена оружия на второстепенное
                 if event.key == pygame.K_q and not paused:
                     player.first_weapon, player.second_weapon = player.second_weapon, player.first_weapon
