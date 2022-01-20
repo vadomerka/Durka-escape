@@ -1004,6 +1004,7 @@ class Enemy(Creature):
         super().__init__(pos_x, pos_y, enemy_images[name][0], cell_w, cell_h * 2,
                          enemy_images[name][1] * (stage + 1), enemy_images[name][2])
         self.time = 0
+        self.move_speed = 1 + random.randint(0, 1)
 
     def movement(self, line, direction="up"):
         if line == "x":
@@ -1037,12 +1038,7 @@ class Enemy(Creature):
         elif stop:
             direction = 0
         else:
-            if self.rect.x >= player.rect.x:
-                direction = 1
-            elif self.rect.x <= player.rect.x:
-                direction = 2
-            else:
-                direction = 0
+            direction = random.randint(0, 2)
         if direction == 1:
             self.movement("x", "left")
         elif direction == 2:
