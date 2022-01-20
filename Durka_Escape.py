@@ -133,30 +133,42 @@ def draw_interface():
                                            (cell_w, cell_h)), (width - cell_w * 3, cell_h * 3))
 
 
-def start_screen():
-    intro_text = ["Начать игру", "",
-                  ""]
+def menu():
+    intro_text = ["Начать игру"]
 
-    fon = pygame.transform.scale(load_image('Каневский_показывает.jpg'), (screen.get_size()))
+    fon = pygame.transform.scale(load_image('psix.jpg'), (screen.get_size()))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 50)
-    text_coord = 50
+    text_coord = 240
     for line in intro_text:
         string_rendered = font.render(line, 1, pygame.Color('black'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 10
+        intro_rect.x = 600
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
+
+def start_screen():
+    comics_count = 0
+    # menu()
+    comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'), (screen.get_size()))
+    screen.blit(comics_img, (0, 0))
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if 210 > event.pos[0] > 0 and 100 > event.pos[1] > 50:
-                    return
+                if comics_count < 3:
+                    comics_count += 1
+                    comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'),
+                                                        (screen.get_size()))
+                    screen.blit(comics_img, (0, 0))
+                else:
+                    menu()
+                    if 810 > event.pos[0] > 590 and 350 > event.pos[1] > 240:
+                        return
                 if event.pos[0] and event.pos[1]:
                     pass
 
@@ -1034,14 +1046,13 @@ if __name__ == '__main__':
                     player.first_weapon, player.second_weapon = player.second_weapon, player.first_weapon
                 # пауза
                 if event.key == pygame.K_ESCAPE:
-                    print('esc')
                     if not paused:
                         paused = True
                     else:
                         paused = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if paused:
-                    if 320 > event.pos[0] > 0 and 100 > event.pos[1] > 50:
+                    if 370 > event.pos[0] > 50 and 100 > event.pos[1] > 50:
                         paused = False
 
         if not paused:
@@ -1058,7 +1069,7 @@ if __name__ == '__main__':
 
             draw_interface()
         else:
-            intro_text = ["Продолжить игру", ""]
+            intro_text = ["Продолжить игру", "Меню"]
             fon = pygame.transform.scale(load_image('paused.jpg'), (screen.get_size()))
             screen.blit(fon, (0, 0))
             font = pygame.font.Font(None, 50)
@@ -1068,7 +1079,7 @@ if __name__ == '__main__':
                 intro_rect = string_rendered.get_rect()
                 text_coord += 10
                 intro_rect.top = text_coord
-                intro_rect.x = 10
+                intro_rect.x = 50
                 text_coord += intro_rect.height
                 screen.blit(string_rendered, intro_rect)
         clock.tick(fps)
