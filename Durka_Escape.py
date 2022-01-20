@@ -3,7 +3,6 @@ import sys
 import random
 import pygame
 
-
 cell_h = cell_w = 50
 size = width, height = 1000, 800
 player_h = cell_h * 2
@@ -42,7 +41,7 @@ def load_level(filename):
     filename = f"data/levels/stage {str(stage)}/{filename}"
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
-        l_m = [line.strip() for line in mapFile]
+        l_m = [li.strip() for li in mapFile]
 
     max_width = max(map(len, l_m))
     # print(list(map(lambda x: list(x.ljust(max_width, '.')), level_map)))
@@ -124,7 +123,8 @@ def draw_interface():
     global weapons_info
     for hp in range(0, player.health, 5):
         screen.blit(heart_image, (hp * 5, 0))
-    screen.blit(pygame.transform.scale(invent_image, (cell_w * 3, cell_h * 3)), (width - cell_w * 3, cell_h))
+    screen.blit(pygame.transform.scale(invent_image, (cell_w * 3, cell_h * 3)),
+                (width - cell_w * 3, cell_h))
     if player.first_weapon:
         screen.blit(pygame.transform.scale(weapons_info[player.first_weapon.type][0],
                                            (cell_w * 3, cell_h * 3)), (width - cell_w * 3, cell_h))
@@ -134,35 +134,36 @@ def draw_interface():
 
 
 def menu():
-    intro_text = ["Начать игру"]
+    text = ["Начать игру"]
 
-    fon = pygame.transform.scale(load_image('psix.jpg'), (screen.get_size()))
-    screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 50)
-    text_coord = 240
-    for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 600
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
+    fn = pygame.transform.scale(load_image('psix.jpg'), (screen.get_size()))
+    screen.blit(fn, (0, 0))
+    fnt = pygame.font.Font(None, 50)
+    text_cord = 240
+    for lin in text:
+        string_render = fnt.render(lin, 1, pygame.Color('black'))
+        int_rect = string_render.get_rect()
+        text_cord += 10
+        int_rect.top = text_cord
+        int_rect.x = 600
+        text_cord += int_rect.height
+        screen.blit(string_render, int_rect)
 
 
 def start_screen(storytelling=True):
     comics_count = 0 if storytelling else 4
     # menu()
     if comics_count < 3:
-        comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'), (screen.get_size()))
+        comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'),
+                                            (screen.get_size()))
         screen.blit(comics_img, (0, 0))
     else:
         menu()
     while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            elif ev.type == pygame.MOUSEBUTTONDOWN:
                 if comics_count < 3:
                     comics_count += 1
                     comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'),
@@ -170,35 +171,56 @@ def start_screen(storytelling=True):
                     screen.blit(comics_img, (0, 0))
                 else:
                     menu()
-                    if 810 > event.pos[0] > 590 and 350 > event.pos[1] > 240:
+                    if 810 > ev.pos[0] > 590 and 350 > ev.pos[1] > 240:
                         return
-                if event.pos[0] and event.pos[1]:
+                if ev.pos[0] and ev.pos[1]:
                     pass
 
         pygame.display.flip()
         clock.tick(fps)
 
 
+def new_game():
+    global all_sprites, player_group, player, room_number, level_map, room_maps, level_sprites, \
+        creature_group, doors_group, only_player_group, player_attacks, chests_group, stage, \
+        walls, paused, running
+    stage = 0
+    all_sprites = SpriteGroup()
+    player_group = SpriteGroup()
+    walls = []
+    player = None
+    room_number = 0
+    level_map = load_level('room 0')
+    room_maps = [0] * 9
+    level_sprites = [0] * 9
+    generate_level(level_map, 'room 0')
+    only_player_group = pygame.sprite.Group()
+    only_player_group.add(player)
+    paused = False
+    start_screen(storytelling=False)
+    running = True
+
+
 def death_screen():
     global player, player_group, jumps, kills, shoots, level_sprites, level, all_sprites, walls, stage, room_number, room_maps, only_player_group
-    intro_text = ["Новая игра",
-                  "",
-                  "",
-                  "Убийств:" + str(kills),
-                  "Смертей:" + str(died)]
+    text = ["Главное меню",
+            "",
+            "",
+            "Убийств:" + str(kills),
+            "Смертей:" + str(died)]
 
-    fon = pygame.transform.scale(load_image('Каневский.jpg'), (screen.get_size()))
-    screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 50)
-    text_coord = 50
-    for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
+    fn = pygame.transform.scale(load_image('каневский(злится).jpg'), (screen.get_size()))
+    screen.blit(fn, (0, 0))
+    fnt = pygame.font.Font(None, 50)
+    text_cord = 10
+    for lin in text:
+        string_render = fnt.render(lin, 1, pygame.Color('black'))
+        int_rect = string_render.get_rect()
+        text_cord += 10
+        int_rect.top = text_cord
+        int_rect.x = 10
+        text_cord += int_rect.height
+        screen.blit(string_render, int_rect)
 
     while True:
         for event in pygame.event.get():
@@ -213,15 +235,15 @@ def death_screen():
                     walls = []
                     player = None
                     room_number = 0
-                    level_map = load_level('room 0')
                     room_maps = [0] * 9
                     level_sprites = [0] * 9
-                    generate_level(level_map, 'room 0')
+                    generate_level(load_level('room 0'), 'room 0')
                     only_player_group.add(player)
                     return
-                if event.pos[0] and event.pos[1]:
-                    pass
-                print(event.pos)
+                if 0 <= event.pos[0] <= 270 and 0 <= event.pos[1] <= 60:
+                    new_game()
+                    return
+                # print(event.pos)
 
         pygame.display.flip()
         clock.tick(fps)
@@ -337,7 +359,7 @@ class Chest(pygame.sprite.Sprite):
             # while weapon == first_weapon or weapon == second_weapon:
             weapon = random.choice(weapons)
             level_sprites[room_number][1].append(
-            Gun(self.rect.x // cell_w, (self.rect.y - self.rect.h) // cell_h, weapon))
+                Gun(self.rect.x // cell_w, (self.rect.y - self.rect.h) // cell_h, weapon))
             self.rect.y -= size_of_cap
         self.image = chests_images["open"]
         self.opened = True
@@ -345,7 +367,7 @@ class Chest(pygame.sprite.Sprite):
 
 class Gun(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, type):
-        #global player_group
+        # global player_group
         super().__init__(player_group)
         self.type = type
         self.damage = weapons_info[self.type][1]
@@ -419,13 +441,16 @@ class Gun(pygame.sprite.Sprite):
     def draw_stats(self):
         if player.first_weapon:
             intro_text = ["Wanna grab a " + self.type + "?",
-                          "             old stats: damage " + str(player.first_weapon.damage) + ", speed " + str(player.stats[1]),
-                          "             new stats: damage " + str(self.damage) + ", speed " + str(self.attack_speed)]
+                          "             old stats: damage " + str(
+                              player.first_weapon.damage) + ", speed " + str(player.stats[1]),
+                          "             new stats: damage " + str(self.damage) + ", speed " + str(
+                              self.attack_speed)]
         else:
             intro_text = ["Wanna grab a " + self.type + "?",
                           "             old stats: damage " + str(0) + ", speed " + str(
                               player.stats[1]),
-                          "             new stats: damage " + str(self.damage) + ", speed " + str(self.attack_speed)]
+                          "             new stats: damage " + str(self.damage) + ", speed " + str(
+                              self.attack_speed)]
         fon = pygame.transform.scale(self.image, (width * 0.8, height * 0.8))
         screen.blit(fon, (width * 0.1, height * 0.1))
         font = pygame.font.Font(None, 30)
@@ -440,7 +465,7 @@ class Gun(pygame.sprite.Sprite):
             screen.blit(string_rendered, intro_rect)
 
     def equip(self):
-        #global level_sprites, room_number
+        # global level_sprites, room_number
 
         if player.first_weapon:
             if player.first_weapon.type == self.type:
@@ -452,7 +477,8 @@ class Gun(pygame.sprite.Sprite):
                 player.first_weapon.equipped = False
                 level_sprites[room_number][1].append(player.first_weapon)
                 old_weapon = level_sprites[room_number][1][-1]
-                old_weapon.image = pygame.transform.scale(weapons_info[old_weapon.type][0], (cell_w, cell_h))
+                old_weapon.image = pygame.transform.scale(weapons_info[old_weapon.type][0],
+                                                          (cell_w, cell_h))
                 old_weapon.rect = old_weapon.image.get_rect().move(
                     cell_w * old_weapon.pos_x, cell_h * old_weapon.pos_y)
                 old_weapon.speed_x = random.randint(-old_weapon.move_speed, old_weapon.move_speed)
@@ -516,8 +542,8 @@ class Gun(pygame.sprite.Sprite):
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
                 self.bullet = Bullet_A(bul_img, pos_x, pos_y, damage=self.damage,
-                                     speed_x=(0 * player.direction), speed_y=0, gravitated=False,
-                                     timer=0.1)
+                                       speed_x=(0 * player.direction), speed_y=0, gravitated=False,
+                                       timer=0.1)
                 self.shoot_cooldown = 1
 
         elif weapons_info[self.type][3] == 'long-range':
@@ -526,7 +552,8 @@ class Gun(pygame.sprite.Sprite):
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
                 self.bullet = Bullet(drop_img, pos_x, pos_y, damage=self.damage,
-                                     speed_x=(5 * player.direction), speed_y=0, gravitated=False, timer=1)
+                                     speed_x=(5 * player.direction), speed_y=0, gravitated=False,
+                                     timer=1)
                 self.shoot_cooldown = 0.3
 
         elif weapons_info[self.type][3] == 'on suppression':
@@ -535,7 +562,8 @@ class Gun(pygame.sprite.Sprite):
                     else player.rect.x + player.rect.w
                 pos_y = player.rect.y
                 self.bullet = Bullet(fire_img, pos_x, pos_y, damage=self.damage,
-                                     speed_x=(5 * player.direction), speed_y=-1.5, gravitated=True, timer=1)
+                                     speed_x=(5 * player.direction), speed_y=-1.5, gravitated=True,
+                                     timer=1)
                 self.shoot_cooldown = 0.1
 
 
@@ -564,7 +592,7 @@ class Bullet(Sprite):
 
     def update(self):
         super().update()
-        #for obj in creature_group:
+        # for obj in creature_group:
         #    if pygame.sprite.collide_mask(self, obj):
         #        self.kill()
         if self.timer > 0:
@@ -816,7 +844,8 @@ class Creature(pygame.sprite.Sprite):
 
 class Enemy(Creature):
     def __init__(self, pos_x, pos_y, name):
-        super().__init__(pos_x, pos_y, enemy_images[name][0], cell_w, cell_h * 2, enemy_images[name][1] * (stage + 1), enemy_images[name][2])
+        super().__init__(pos_x, pos_y, enemy_images[name][0], cell_w, cell_h * 2,
+                         enemy_images[name][1] * (stage + 1), enemy_images[name][2])
         self.time = 0
         self.frames_count = 1
 
@@ -1007,7 +1036,8 @@ if __name__ == '__main__':
                 player.movement("x", "stop")
 
             mouse_pressed = pygame.mouse.get_pressed()
-            if mouse_pressed[0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
+            if mouse_pressed[
+                0]:  # нужно будет заменить ноль на константу из pygame (девая кнопка мыши)
                 player.left_attack()
 
         for event in pygame.event.get():
@@ -1058,22 +1088,7 @@ if __name__ == '__main__':
                     if 370 > event.pos[0] > 50 and 100 > event.pos[1] > 50:
                         paused = False
                     elif 160 > event.pos[0] > 40 and 180 > event.pos[1] > 140:
-                        stage = 0
-
-                        all_sprites = SpriteGroup()
-                        player_group = SpriteGroup()
-                        walls = []
-                        player = None
-                        room_number = 0
-                        level_map = load_level('room 0')
-                        room_maps = [0] * 9
-                        level_sprites = [0] * 9
-                        generate_level(level_map, 'room 0')
-                        only_player_group = pygame.sprite.Group()
-                        only_player_group.add(player)
-                        paused = False
-                        start_screen(storytelling=False)
-                        running = True
+                        new_game()
 
         if not paused:
             level = room_maps[room_number]
