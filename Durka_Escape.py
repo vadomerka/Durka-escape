@@ -169,7 +169,15 @@ def start_screen(storytelling=True):
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 terminate()
-            if ev.type == pygame.MOUSEBUTTONDOWN:
+            elif ev.type == pygame.KEYDOWN:
+                if comics_count < 3:
+                    comics_count += 1
+                    comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'),
+                                                        (screen.get_size()))
+                    screen.blit(comics_img, (0, 0))
+                else:
+                    menu()
+            elif ev.type == pygame.MOUSEBUTTONDOWN:
                 if comics_count < 3:
                     comics_count += 1
                     comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'),
@@ -1189,8 +1197,8 @@ if __name__ == '__main__':
                 player.movement("x", "left")
             if keys[pygame.K_d]:
                 player.movement("x", "right")
-            if keys[pygame.K_s]:
-                player.movement("y", "down")
+            # if keys[pygame.K_s]:
+            #     player.movement("y", "down")
             if not (keys[pygame.K_a] or keys[pygame.K_d]):  # если юзер не двигается по х, тогда стоп
                 player.movement("x", "stop")
 
