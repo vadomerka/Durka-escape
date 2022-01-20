@@ -1011,11 +1011,11 @@ class Enemy(Creature):
 
     def draw_hp(self):
         length_of_health_bar = cell_w * 2
-        hp_val = 5 * (stage + 1) * 2
-        hp_size = (length_of_health_bar / self.max_health) * hp_val
+        hp_val = 5
+        hp_size = 5
         start_of_bar = self.rect.centerx - (length_of_health_bar // 2)
         for y in range(0, round(self.health // 100)):
-            for x in range(0, 100, 5):
+            for x in range(0, 100, hp_val):
                 screen.blit(pygame.transform.scale(heart_image, (hp_size, hp_size)),
                             (start_of_bar + x, self.rect.y - hp_size * (2 + y)))
         for x in range(0, round(self.health % 100), 5):
