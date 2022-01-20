@@ -211,9 +211,10 @@ def statistics(result):
     text = ["Главное меню",
             "",
             "",
-            "Убийств:" + str(kills),
-            "Смертей:" + str(died),
-            "Итог:" + result]
+            "Убийств: " + str(kills),
+            "Смертей: " + str(died),
+            "Уровень: " + str(stage),
+            "Итог: " + result]
 
     fn = pygame.transform.scale(load_image('каневский(злится).jpg'), (screen.get_size()))
     screen.blit(fn, (0, 0))
@@ -1010,12 +1011,16 @@ class Enemy(Creature):
 
     def draw_hp(self):
         length_of_health_bar = cell_w * 2
-        hp_val = 5
+        hp_val = 5 * (stage + 1) * 2
         hp_size = (length_of_health_bar / self.max_health) * hp_val
         start_of_bar = self.rect.centerx - (length_of_health_bar // 2)
-        for hp in range(0, round(self.health), hp_val):
+        for y in range(0, round(self.health // 100)):
+            for x in range(0, 100, 5):
+                screen.blit(pygame.transform.scale(heart_image, (hp_size, hp_size)),
+                            (start_of_bar + x, self.rect.y - hp_size * (2 + y)))
+        for x in range(0, round(self.health % 100), 5):
             screen.blit(pygame.transform.scale(heart_image, (hp_size, hp_size)),
-                        (start_of_bar + hp, self.rect.y - hp_size * 2))
+                        (start_of_bar + x, self.rect.y - hp_size * 2))
 
     def AI(self, free_r=False, free_l=False, stop=False):
         if free_l:
@@ -1158,7 +1163,7 @@ if __name__ == '__main__':
         'S': [load_image('security.png'), 150, 3]
     }
     enemies = ['X', 'S']
-    max_stage = 0
+    max_stage = 1
 
     stage = 0
     all_sprites = SpriteGroup()
