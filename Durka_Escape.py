@@ -1045,7 +1045,7 @@ class Enemy(Creature):
         self.time = (self.time + 1) % fps
         self.draw_hp()
         if pygame.sprite.collide_mask(self, player):
-            player.health -= self.damage
+            player.health -= 0 # self.damage
         for obj in player_attacks:
             if pygame.sprite.collide_mask(self, obj):
                 self.health -= obj.damage
@@ -1053,21 +1053,17 @@ class Enemy(Creature):
 
     def collide(self):
         super().collide()
-        row1 = self.rect.y // cell_h
-        col1 = self.rect.x // cell_w
         col2 = self.rect.x // cell_w
         row2 = self.rect.y // cell_h + self.rect.h // cell_h
-        if 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
-                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+        if 0 <= row2 < len(level) and 0 <= col2 + 1 < len(level[-1]) and \
+                0 <= row2 < len(level) and 0 <= col2 - 1 < len(level[-1]) and \
                 level[row2][col2 + 1] == '.' and \
                 level[row2][col2 - 1] == '.':
             self.AI(False, False, True)
-        elif 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
-                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+        elif 0 <= row2 < len(level) and 0 <= col2 + 1 < len(level[-1]) and \
                 level[row2][col2 + 1] == '.':
             self.AI(False, True)
-        elif 0 <= row1 < len(level) and 0 <= col1 < len(level[-1]) and \
-                0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
+        elif 0 <= row2 < len(level) and 0 <= col2 < len(level[-1]) and \
                 level[row2][col2] == '.':
             self.AI(True, False)
 
