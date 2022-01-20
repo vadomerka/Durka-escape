@@ -106,20 +106,23 @@ def generate_level(lev, filename):
 def next_level():
     global all_sprites, player_group, player, room_number, level_map, room_maps, level_sprites, \
         creature_group, doors_group, only_player_group, player_attacks, chests_group, stage
-    stage += 1
-    all_sprites = SpriteGroup()
-    player_group = SpriteGroup()
-    creature_group = pygame.sprite.Group()
-    doors_group = pygame.sprite.Group()
-    only_player_group = pygame.sprite.Group()
-    player_attacks = pygame.sprite.Group()
-    chests_group = pygame.sprite.Group()
-    room_number = 0
-    level_map = load_level('room 0')
-    room_maps = [0] * 9
-    level_sprites = [0] * 9
-    generate_level(level_map, 'room 0')
-    only_player_group.add(player)
+    if stage < max_stage:
+        stage += 1
+        all_sprites = SpriteGroup()
+        player_group = SpriteGroup()
+        creature_group = pygame.sprite.Group()
+        doors_group = pygame.sprite.Group()
+        only_player_group = pygame.sprite.Group()
+        player_attacks = pygame.sprite.Group()
+        chests_group = pygame.sprite.Group()
+        room_number = 0
+        level_map = load_level('room 0')
+        room_maps = [0] * 9
+        level_sprites = [0] * 9
+        generate_level(level_map, 'room 0')
+        only_player_group.add(player)
+    else:
+        win_screen()
 
 
 def draw_interface():
@@ -166,7 +169,7 @@ def start_screen(storytelling=True):
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 terminate()
-            elif ev.type == pygame.MOUSEBUTTONDOWN:
+            if ev.type == pygame.MOUSEBUTTONDOWN:
                 if comics_count < 3:
                     comics_count += 1
                     comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'),
@@ -204,13 +207,13 @@ def new_game():
     running = True
 
 
-def death_screen():
-    global player, player_group, jumps, kills, shoots, level_sprites, level, all_sprites, walls, stage, room_number, room_maps, only_player_group
+def statistics(result):
     text = ["Главное меню",
             "",
             "",
             "Убийств:" + str(kills),
-            "Смертей:" + str(died)]
+            "Смертей:" + str(died),
+            "Итог:" + result]
 
     fn = pygame.transform.scale(load_image('каневский(злится).jpg'), (screen.get_size()))
     screen.blit(fn, (0, 0))
@@ -225,24 +228,51 @@ def death_screen():
         text_cord += int_rect.height
         screen.blit(string_render, int_rect)
 
+
+def win_screen():
+    global player, player_group, jumps, kills, shoots, level_sprites, level, all_sprites, walls,\
+        stage, room_number, room_maps, only_player_group
+    comics_count = 0
+    if comics_count < 2:
+        comics_img = pygame.transform.scale(load_image(f'ending_{str(comics_count)}.png'),
+                                            (screen.get_size()))
+        screen.blit(comics_img, (0, 0))
+    else:
+        statistics("победа")
+
+    while True:
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                terminate()
+            elif comics_count < 2 and ev.type == pygame.KEYDOWN:
+                comics_count += 1
+            elif ev.type == pygame.MOUSEBUTTONDOWN:
+                if comics_count < 1:
+                    comics_count += 1
+                    comics_img = pygame.transform.scale(load_image(f'ending_{str(comics_count)}.png'),
+                                                        (screen.get_size()))
+                    screen.blit(comics_img, (0, 0))
+                else:
+                    statistics("победа")
+                    if 0 <= ev.pos[0] <= 270 and 0 <= ev.pos[1] <= 60:
+                        new_game()
+                        return
+                # print(event.pos)
+
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def death_screen():
+    global player, player_group, jumps, kills, shoots, level_sprites, level, all_sprites, walls, \
+        stage, room_number, room_maps, only_player_group
+    statistics("вы погибли")
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if 210 > event.pos[0] > 0 and 100 > event.pos[1] > 50:
-                    stage = 0
-
-                    all_sprites = SpriteGroup()
-                    player_group = SpriteGroup()
-                    walls = []
-                    player = None
-                    room_number = 0
-                    room_maps = [0] * 9
-                    level_sprites = [0] * 9
-                    generate_level(load_level('room 0'), 'room 0')
-                    only_player_group.add(player)
-                    return
                 if 0 <= event.pos[0] <= 270 and 0 <= event.pos[1] <= 60:
                     new_game()
                     return
@@ -1128,9 +1158,9 @@ if __name__ == '__main__':
         'S': [load_image('security.png'), 150, 3]
     }
     enemies = ['X', 'S']
+    max_stage = 0
 
     stage = 0
-
     all_sprites = SpriteGroup()
     player_group = SpriteGroup()
     walls = []
