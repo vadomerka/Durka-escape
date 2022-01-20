@@ -150,11 +150,14 @@ def menu():
         screen.blit(string_rendered, intro_rect)
 
 
-def start_screen():
-    comics_count = 0
+def start_screen(storytelling=True):
+    comics_count = 0 if storytelling else 4
     # menu()
-    comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'), (screen.get_size()))
-    screen.blit(comics_img, (0, 0))
+    if comics_count < 3:
+        comics_img = pygame.transform.scale(load_image(f'story_{str(comics_count)}.png'), (screen.get_size()))
+        screen.blit(comics_img, (0, 0))
+    else:
+        menu()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1054,6 +1057,23 @@ if __name__ == '__main__':
                 if paused:
                     if 370 > event.pos[0] > 50 and 100 > event.pos[1] > 50:
                         paused = False
+                    elif 160 > event.pos[0] > 40 and 180 > event.pos[1] > 140:
+                        stage = 0
+
+                        all_sprites = SpriteGroup()
+                        player_group = SpriteGroup()
+                        walls = []
+                        player = None
+                        room_number = 0
+                        level_map = load_level('room 0')
+                        room_maps = [0] * 9
+                        level_sprites = [0] * 9
+                        generate_level(level_map, 'room 0')
+                        only_player_group = pygame.sprite.Group()
+                        only_player_group.add(player)
+                        paused = False
+                        start_screen(storytelling=False)
+                        running = True
 
         if not paused:
             level = room_maps[room_number]
@@ -1069,7 +1089,7 @@ if __name__ == '__main__':
 
             draw_interface()
         else:
-            intro_text = ["Продолжить игру", "Меню"]
+            intro_text = ["Продолжить игру", "", "Меню"]
             fon = pygame.transform.scale(load_image('paused.jpg'), (screen.get_size()))
             screen.blit(fon, (0, 0))
             font = pygame.font.Font(None, 50)
