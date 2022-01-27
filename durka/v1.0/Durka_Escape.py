@@ -1053,7 +1053,7 @@ class Enemy(Creature):
         self.time = (self.time + 1) % fps
         self.draw_hp()
         if pygame.sprite.collide_mask(self, player):
-            player.health -= self.damage
+            player.health -= 0  # self.damage
         for obj in player_attacks:
             if pygame.sprite.collide_mask(self, obj):
                 self.health -= obj.damage
